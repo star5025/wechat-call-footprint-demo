@@ -1,0 +1,26 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Future Node/Tauri build outputs
+node_modules/
+dist/
+build/
+target/
+src-tauri/target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example

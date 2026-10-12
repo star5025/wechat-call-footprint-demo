@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>通话足迹 · 时光墙 Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <div class="app">
+    <header class="topbar">
+      <button class="brand" data-nav="home" aria-label="回到首页">
+        <span class="brand-logo"><i></i><i></i><i></i></span>
+        <strong>通话足迹</strong>
+      </button>
+
+      <nav class="pill-nav" aria-label="主导航">
+        <button class="active" data-nav="home"><span>⌂</span>首页</button>
+        <button data-nav="wall"><span>▦</span>时光墙</button>
+        <button data-nav="discover"><span>✦</span>小发现</button>
+        <button data-nav="calls"><span>◷</span>记录</button>
+      </nav>
+
+      <div class="top-actions">
+        <span class="demo-tag">Demo</span>
+        <button class="round-btn" id="privacyBtn" title="隐藏名字" aria-label="切换隐私模式">◉</button>
+        <button class="round-btn" id="settingsBtn" title="设置" aria-label="打开设置">⚙</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="view-home">
+        <header class="welcome">
+          <div>
+            <span class="date-line">10 月 10 日 · 星期六</span>
+            <h1>下午好 <span class="wave">👋</span></h1>
+            <p>来看看你和重要的人，留下了哪些通话时光。</p>
+          </div>
+          <button class="contact-switch" id="contactSwitch">
+            <span class="mini-avatar">音</span>
+            <span><small>正在查看</small><strong data-private>音</strong></span>
+            <b>⌄</b>
+          </button>
+        </header>
+
+        <section class="memory-hero">
+          <div class="hero-glow glow-a"></div>
+          <div class="hero-glow glow-b"></div>
+          <div class="hero-copy">
+            <span class="soft-label">你们的通话时光</span>
+            <div class="big-number"><strong id="totalHours">12</strong><span>小时</span><strong id="totalMinutes">19</strong><span>分</span></div>
+            <p>从 9 月 22 日到 10 月 7 日</p>
+            <button class="hero-button" data-nav="calls">看看每一次 <span>→</span></button>
+          </div>
+
+          <div class="connection-art" aria-hidden="true">
+            <div class="person person-me"><span>我</span></div>
+            <div class="sound-path">
+              <i style="--h:18px"></i><i style="--h:34px"></i><i style="--h:50px"></i><i style="--h:28px"></i><i style="--h:62px"></i><i style="--h:42px"></i><i style="--h:24px"></i><i style="--h:48px"></i><i style="--h:30px"></i>
+            </div>
+            <div class="person person-you"><span data-private>音</span></div>
+            <div class="float-note note-one">♡</div>
+            <div class="float-note note-two">✦</div>
+          </div>
+
+          <div class="hero-chips">
+            <span>📹 视频 11 次</span>
+            <span>🎙 语音 5 次</span>
+            <span>✨ 共接通 16 次</span>
+          </div>
+        </section>
+
+        <section class="quick-stories">
+          <article class="story-card story-purple" data-action="longest">
+            <div class="story-icon moon-icon"><span>☾</span></div>
+            <div><small>最长的一次</small><strong>2 小时 17 分</strong><p>从深夜一直聊到零点后</p></div>
+            <button aria-label="查看最长通话">↗</button>
+          </article>
+          <article class="story-card story-peach" data-nav="discover">
+            <div class="story-icon clock-icon"><span>9</span><i></i></div>
+            <div><small>常见时刻</small><strong>晚上 9 点</strong><p>通话最容易在这时开始</p></div>
+            <button aria-label="查看时间规律">↗</button>
+          </article>
+          <article class="story-card story-mint" data-action="connected">
+            <div class="story-icon ring-icon"><span>16</span></div>
+            <div><small>已经接通</small><strong>16 次</strong><p>平均每次 46 分钟</p></div>
+            <button aria-label="查看接通记录">↗</button>
+          </article>
+        </section>
+
+        <section class="soft-panel rhythm-panel">
+          <div class="section-heading">
+            <div><span class="section-emoji">〰</span><div><h2>最近的通话时光</h2><p>每根柱子，都是一天的声音</p></div></div>
+            <div class="soft-tabs" id="chartTabs"><button class="active" data-chart="duration">时长</button><button data-chart="count">次数</button></div>
+          </div>
+          <div class="soft-chart" id="softChart"></div>
+          <div class="chart-pop" id="chartPop">轻点柱子，看看那一天</div>
+        </section>
+
+        <section class="bottom-row">
+          <article class="soft-panel latest-panel">
+            <div class="section-heading compact">
+              <div><span class="section-emoji coral">↗</span><div><h2>最近一次</h2><p>10 月 7 日 · 00:43</p></div></div>
+              <button class="link-btn" data-nav="calls">全部记录</button>
+            </div>
+            <button class="latest-call" data-call-id="22">
+              <span class="call-bubble video">▻</span>
+              <span class="latest-main"><strong data-private>和音的视频通话</strong><small>正常结束</small></span>
+              <span class="latest-time"><strong>2:17:29</strong><small>查看详情 →</small></span>
+            </button>
+          </article>
+
+          <article class="soft-panel tiny-calendar-panel">
+            <div class="section-heading compact"><div><span class="section-emoji yellow">☀</span><div><h2>有声音的日子</h2><p>9 月 22 日 — 10 月 7 日</p></div></div><button class="link-btn" data-nav="wall">打开时光墙</button></div>
+            <div class="tiny-calendar" id="tinyCalendar"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-wall">
+        <header class="wall-header">
+          <div class="wall-title">
+            <span class="page-orb orb-wall">▦</span>
+            <div><span class="date-line">你们的通话日历</span><h1>时光墙</h1><p>每个小格子，都是一天留下的声音。</p></div>
+          </div>
+          <div class="range-switch" id="wallRangeSwitch" aria-label="展示时间范围">
+            <button class="active" data-wall-mode="year">一年</button>
+            <button data-wall-mode="month">一个月</button>
+            <button data-wall-mode="custom">自定义</button>
+          </div>
+        </header>
+
+        <section class="wall-controls soft-panel">
+          <div class="wall-control active" id="yearControl">
+            <button class="period-arrow" id="prevYear" aria-label="上一年">‹</button>
+            <label><span>年份</span><select id="wallYear"><option value="2025">2025 年</option><option value="2026" selected>2026 年</option></select></label>
+            <button class="period-arrow" id="nextYear" aria-label="下一年">›</button>
+          </div>
+          <div class="wall-control" id="monthControl">
+            <button class="period-arrow" id="prevMonth" aria-label="上一个月">‹</button>
+            <label><span>月份</span><input id="wallMonth" type="month" min="2025-01" max="2026-10" value="2026-10" /></label>
+            <button class="period-arrow" id="nextMonth" aria-label="下一个月">›</button>
+          </div>
+          <div class="wall-control custom-control" id="customControl">
+            <label><span>开始</span><input id="wallStart" type="date" value="2026-09-22" max="2026-10-10" /></label>
+            <i>—</i>
+            <label><span>结束</span><input id="wallEnd" type="date" value="2026-10-10" max="2026-10-10" /></label>
+            <button class="apply-range" id="applyCustom">看看这段时光</button>
+          </div>
+          <div class="wall-contact"><span class="mini-avatar">音</span><span><small>正在查看</small><strong data-private>音</strong></span></div>
+        </section>
+
+        <section class="wall-summary" id="wallSummary"></section>
+
+        <section class="contribution-card">
+          <div class="contribution-topline">
+            <div><h2 id="wallPeriodTitle">2026 年</h2><p id="wallPeriodSubtitle">颜色越深，这一天聊得越久</p></div>
+            <div class="wall-legend"><span>少</span><i data-level="0"></i><i data-level="1"></i><i data-level="2"></i><i data-level="3"></i><i data-level="4"></i><span>多</span></div>
+          </div>
+          <div class="wall-scroll" id="wallScroll">
+            <div class="wall-months" id="wallMonths"></div>
+            <div class="wall-grid-wrap">
+              <div class="wall-weekdays"><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span></div>
+              <div class="contribution-grid" id="contributionGrid" role="grid" aria-label="通话时光墙"></div>
+            </div>
+          </div>
+          <div class="wall-footnote"><span><b></b> 有通话记录</span><span>轻点任意一天查看详情</span><span class="demo-data-note">Demo 展示包含模拟历史数据</span></div>
+        </section>
+
+        <article class="wall-empty-note">
+          <span>💡</span><div><strong>空白也有含义</strong><p>浅色格子表示当天没有通话记录；它不代表关系状态，也不说明背后的原因。</p></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-discover">
+        <header class="simple-header">
+          <span class="page-orb orb-lavender">✦</span>
+          <div><h1>关于你们的小发现</h1><p>只描述通话记录，不猜测感情和原因。</p></div>
+        </header>
+
+        <div class="discovery-grid">
+          <article class="discovery-card night-card">
+            <span class="discovery-tag">最常出现</span>
+            <h2>夜晚，是你们最容易<br />聊起来的时候</h2>
+            <p>超过一半的通话在 20:00 后开始</p>
+            <div class="night-sky"><i></i><i></i><i></i><div class="skyline"></div><span class="sky-moon">☾</span></div>
+          </article>
+
+          <article class="discovery-card donut-card">
+            <span class="discovery-tag mint-tag">聊了多久</span>
+            <h2>大多数通话<br />超过 30 分钟</h2>
+            <div class="donut" aria-label="11 次通话超过 30 分钟"><div><strong>11</strong><span>次</span></div></div>
+            <p>16 次接通中，有 11 次超过半小时</p>
+          </article>
+
+          <article class="discovery-card week-card">
+            <span class="discovery-tag peach-tag">最热闹的一天</span>
+            <h2>星期二</h2>
+            <p>这一天留下的通话时间最多</p>
+            <div class="weekday-bubbles" id="weekdayBubbles"></div>
+          </article>
+
+          <article class="discovery-card streak-card">
+            <span class="discovery-tag blue-tag">连续出现</span>
+            <h2>有 3 天<br />连续留下通话记录</h2>
+            <p>这里说的只是记录连续出现，不代表关系状态。</p>
+            <div class="streak-dots"><i></i><i></i><i></i><i class="off"></i><i class="off"></i></div>
+          </article>
+        </div>
+
+        <article class="gentle-note">
+          <span>🌿</span><div><strong>这些只是小发现</strong><p>通话长短和频率有很多现实原因。这个工具只帮你回看记录，不评价任何一段关系。</p></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-calls">
+        <header class="calls-header">
+          <div><span class="date-line">22 条记录</span><h1>每一次通话</h1><p>按时间轻松翻看，点开就能看到详情。</p></div>
+          <button class="search-round" id="searchToggle">⌕</button>
+        </header>
+
+        <div class="search-reveal" id="searchReveal" hidden><span>⌕</span><input id="callSearch" placeholder="搜索日期或状态" /><button id="closeSearch">×</button></div>
+
+        <div class="bubble-filters" id="callFilters">
+          <button class="active" data-filter="all">全部</button>
+          <button data-filter="video">📹 视频</button>
+          <button data-filter="voice">🎙 语音</button>
+          <button data-filter="missed">未接通</button>
+        </div>
+
+        <div class="call-feed" id="callFeed"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="contact-menu" id="contactMenu" hidden></div>
+  <div class="toast-zone" id="toastZone" aria-live="polite"></div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+  <aside class="detail-sheet" id="detailSheet" aria-hidden="true">
+    <button class="sheet-close" id="sheetClose">×</button>
+    <div id="sheetContent"></div>
+  </aside>
+
+  <aside class="settings-sheet" id="settingsSheet" aria-hidden="true">
+    <header><div><small>轻松设置</small><h2>按你的习惯来</h2></div><button id="settingsClose">×</button></header>
+    <div class="setting-list">
+      <button class="setting-item" id="settingPrivacy"><span class="setting-icon lavender">◉</span><span><strong>隐藏名字</strong><small>投屏或分享画面时更安心</small></span><i>关闭</i></button>
+      <button class="setting-item" id="settingScan"><span class="setting-icon mint">↻</span><span><strong>重新扫描</strong><small>当前 Demo 不会读取真实数据</small></span><i>›</i></button>
+      <button class="setting-item" id="settingAbout"><span class="setting-icon peach">♡</span><span><strong>关于这个版本</strong><small>时光墙 UI Demo · v0.3</small></span><i>›</i></button>
+    </div>
+    <div class="local-note"><span>✓</span><p><strong>所有内容都在本地</strong><br />这是模拟数据，不会访问你的微信。</p></div>
+  </aside>
+
+  <div class="wall-tooltip" id="wallTooltip" role="tooltip" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
