@@ -36,3 +36,4 @@ fixtures/private/
 *.sqlite3
 exports/
 diagnostics/
+release/
