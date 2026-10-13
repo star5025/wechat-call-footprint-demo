@@ -24,3 +24,15 @@ src-tauri/target/
 .env
 .env.*
 !.env.example
+fixtures/private/
+*.key
+*.pem
+
+# Local databases, exports and diagnostics
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+exports/
+diagnostics/

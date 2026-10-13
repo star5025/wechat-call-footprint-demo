@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://call-footprint.local/contracts/v1/common.schema.json",
+  "title": "Call Footprint Common Types",
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "isoDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confidence": {
+      "enum": ["confirmed", "inferred", "unknown"]
+    },
+    "coverageState": {
+      "enum": ["complete", "partial", "missing", "failed"]
+    },
+    "mediaType": {
+      "enum": ["voice", "video", "unknown"]
+    },
+    "direction": {
+      "enum": ["incoming", "outgoing", "unknown"]
+    },
+    "contactKind": {
+      "enum": ["person", "group", "official", "unknown"]
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "interrupted",
+        "missed",
+        "cancelled_by_self",
+        "cancelled_by_peer",
+        "rejected",
+        "busy",
+        "failed",
+        "unknown"
+      ]
+    },
+    "qualityFlag": {
+      "enum": [
+        "missing_start_time",
+        "missing_duration",
+        "unknown_timezone",
+        "unknown_contact",
+        "unknown_media_type",
+        "unknown_direction",
+        "unknown_outcome",
+        "possible_duplicate",
+        "conflicting_source_records",
+        "partial_source_coverage",
+        "unsupported_source_variant",
+        "parser_recovered_value",
+        "user_corrected"
+      ]
+    },
+    "dateRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startDate", "endDate", "timezone"],
+      "properties": {
+        "startDate": { "$ref": "#/$defs/isoDate" },
+        "endDate": { "$ref": "#/$defs/isoDate" },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "sourceRecordIdHash", "sourceDatabaseKind"],
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/opaqueId" },
+        "sourceRecordIdHash": { "type": "string", "minLength": 16, "maxLength": 128 },
+        "sourceDatabaseKind": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "sourcePartition": { "type": "string", "maxLength": 160 }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRefs",
+        "adapterId",
+        "adapterVersion",
+        "parserVersion",
+        "dedupVersion",
+        "normalizedAt"
+      ],
+      "properties": {
+        "sourceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        },
+        "adapterId": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "adapterVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "parserVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "dedupVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "normalizedAt": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "coverageInterval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startDate", "endDate", "state", "sourceIds", "reasonCode"],
+      "properties": {
+        "startDate": { "$ref": "#/$defs/isoDate" },
+        "endDate": { "$ref": "#/$defs/isoDate" },
+        "state": { "$ref": "#/$defs/coverageState" },
+        "sourceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/opaqueId" }
+        },
+        "reasonCode": { "type": ["string", "null"], "maxLength": 120 }
+      }
+    }
+  }
+}

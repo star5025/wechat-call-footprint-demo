@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://call-footprint.local/contracts/v1/contribution-wall.schema.json",
+  "title": "ContributionWallResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["range", "metric", "days", "summary", "quality"],
+  "properties": {
+    "range": { "$ref": "common.schema.json#/$defs/dateRange" },
+    "metric": { "enum": ["duration", "count"] },
+    "days": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contributionDay" }
+    },
+    "summary": { "$ref": "#/$defs/callSummary" },
+    "quality": { "$ref": "#/$defs/dataQuality" }
+  },
+  "$defs": {
+    "contributionDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "callCount",
+        "connectedCount",
+        "durationSeconds",
+        "videoCount",
+        "voiceCount",
+        "unknownMediaCount",
+        "coverage",
+        "qualityFlags"
+      ],
+      "properties": {
+        "date": { "$ref": "common.schema.json#/$defs/isoDate" },
+        "callCount": { "type": "integer", "minimum": 0 },
+        "connectedCount": { "type": "integer", "minimum": 0 },
+        "durationSeconds": { "type": "integer", "minimum": 0 },
+        "videoCount": { "type": "integer", "minimum": 0 },
+        "voiceCount": { "type": "integer", "minimum": 0 },
+        "unknownMediaCount": { "type": "integer", "minimum": 0 },
+        "coverage": { "$ref": "common.schema.json#/$defs/coverageState" },
+        "qualityFlags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/qualityFlag" }
+        }
+      }
+    },
+    "callSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attemptedCount",
+        "connectedCount",
+        "timedCount",
+        "missedOrCancelledCount",
+        "totalDurationSeconds",
+        "meanDurationSeconds",
+        "medianDurationSeconds",
+        "longestDurationSeconds",
+        "longestEventId",
+        "firstEventAt",
+        "lastEventAt",
+        "activeDayCount",
+        "completeCoverageDayCount"
+      ],
+      "properties": {
+        "attemptedCount": { "type": "integer", "minimum": 0 },
+        "connectedCount": { "type": "integer", "minimum": 0 },
+        "timedCount": { "type": "integer", "minimum": 0 },
+        "missedOrCancelledCount": { "type": "integer", "minimum": 0 },
+        "totalDurationSeconds": { "type": "integer", "minimum": 0 },
+        "meanDurationSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "medianDurationSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "longestDurationSeconds": { "type": ["integer", "null"], "minimum": 0 },
+        "longestEventId": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/opaqueId" },
+            { "type": "null" }
+          ]
+        },
+        "firstEventAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/dateTime" },
+            { "type": "null" }
+          ]
+        },
+        "lastEventAt": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/dateTime" },
+            { "type": "null" }
+          ]
+        },
+        "activeDayCount": { "type": "integer", "minimum": 0 },
+        "completeCoverageDayCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "qualityDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "score", "summary", "affectedEventCount"],
+      "properties": {
+        "id": {
+          "enum": [
+            "source_coverage",
+            "field_completeness",
+            "time_continuity",
+            "structural_consistency",
+            "identity_certainty",
+            "dedup_certainty"
+          ]
+        },
+        "state": { "enum": ["good", "warning", "poor", "unknown"] },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "affectedEventCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "dataQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overallState", "dimensions", "issueCount", "reviewEventCount", "coverage"],
+      "properties": {
+        "overallState": { "enum": ["good", "partial", "needs_review", "unavailable"] },
+        "dimensions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/qualityDimension" }
+        },
+        "issueCount": { "type": "integer", "minimum": 0 },
+        "reviewEventCount": { "type": "integer", "minimum": 0 },
+        "coverage": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/coverageInterval" }
+        }
+      }
+    }
+  }
+}

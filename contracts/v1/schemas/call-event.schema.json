@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://call-footprint.local/contracts/v1/call-event.schema.json",
+  "title": "CallEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "accountId",
+    "contactId",
+    "contactSnapshot",
+    "conversationId",
+    "startedAt",
+    "answeredAt",
+    "endedAt",
+    "timezone",
+    "utcOffsetMinutes",
+    "connectedDurationSeconds",
+    "mediaType",
+    "direction",
+    "outcome",
+    "parseConfidence",
+    "identityConfidence",
+    "dedupConfidence",
+    "qualityFlags",
+    "excluded",
+    "lineage"
+  ],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/opaqueId" },
+    "accountId": { "$ref": "common.schema.json#/$defs/opaqueId" },
+    "contactId": {
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/opaqueId" },
+        { "type": "null" }
+      ]
+    },
+    "contactSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "kind"],
+      "properties": {
+        "displayName": { "type": ["string", "null"], "maxLength": 500 },
+        "kind": { "$ref": "common.schema.json#/$defs/contactKind" }
+      }
+    },
+    "conversationId": {
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/opaqueId" },
+        { "type": "null" }
+      ]
+    },
+    "startedAt": {
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/dateTime" },
+        { "type": "null" }
+      ]
+    },
+    "answeredAt": {
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/dateTime" },
+        { "type": "null" }
+      ]
+    },
+    "endedAt": {
+      "anyOf": [
+        { "$ref": "common.schema.json#/$defs/dateTime" },
+        { "type": "null" }
+      ]
+    },
+    "timezone": { "type": ["string", "null"], "maxLength": 80 },
+    "utcOffsetMinutes": { "type": ["integer", "null"], "minimum": -840, "maximum": 840 },
+    "connectedDurationSeconds": { "type": ["integer", "null"], "minimum": 0, "maximum": 604800 },
+    "mediaType": { "$ref": "common.schema.json#/$defs/mediaType" },
+    "direction": { "$ref": "common.schema.json#/$defs/direction" },
+    "outcome": { "$ref": "common.schema.json#/$defs/outcome" },
+    "parseConfidence": { "$ref": "common.schema.json#/$defs/confidence" },
+    "identityConfidence": { "$ref": "common.schema.json#/$defs/confidence" },
+    "dedupConfidence": { "$ref": "common.schema.json#/$defs/confidence" },
+    "qualityFlags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/qualityFlag" }
+    },
+    "excluded": { "type": "boolean" },
+    "lineage": { "$ref": "common.schema.json#/$defs/lineage" }
+  }
+}

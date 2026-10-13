@@ -1,0 +1,88 @@
+{
+  "range": {
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-07",
+    "timezone": "Asia/Shanghai"
+  },
+  "metric": "duration",
+  "days": [
+    {
+      "date": "2026-10-05",
+      "callCount": 2,
+      "connectedCount": 1,
+      "durationSeconds": 881,
+      "videoCount": 1,
+      "voiceCount": 1,
+      "unknownMediaCount": 0,
+      "coverage": "complete",
+      "qualityFlags": []
+    },
+    {
+      "date": "2026-10-06",
+      "callCount": 3,
+      "connectedCount": 2,
+      "durationSeconds": 8785,
+      "videoCount": 2,
+      "voiceCount": 1,
+      "unknownMediaCount": 0,
+      "coverage": "complete",
+      "qualityFlags": []
+    },
+    {
+      "date": "2026-10-07",
+      "callCount": 1,
+      "connectedCount": 1,
+      "durationSeconds": 8249,
+      "videoCount": 1,
+      "voiceCount": 0,
+      "unknownMediaCount": 0,
+      "coverage": "complete",
+      "qualityFlags": []
+    }
+  ],
+  "summary": {
+    "attemptedCount": 6,
+    "connectedCount": 4,
+    "timedCount": 4,
+    "missedOrCancelledCount": 2,
+    "totalDurationSeconds": 17915,
+    "meanDurationSeconds": 4478.75,
+    "medianDurationSeconds": 4392.5,
+    "longestDurationSeconds": 8249,
+    "longestEventId": "evt_demo_20261007_004331",
+    "firstEventAt": "2026-10-05T19:13:02+08:00",
+    "lastEventAt": "2026-10-07T00:43:31+08:00",
+    "activeDayCount": 3,
+    "completeCoverageDayCount": 3
+  },
+  "quality": {
+    "overallState": "good",
+    "dimensions": [
+      {
+        "id": "source_coverage",
+        "state": "good",
+        "score": 1,
+        "summary": "所选日期均有完整数据覆盖。",
+        "affectedEventCount": 0
+      },
+      {
+        "id": "field_completeness",
+        "state": "good",
+        "score": 1,
+        "summary": "全部接通记录均包含可靠时长。",
+        "affectedEventCount": 0
+      }
+    ],
+    "issueCount": 0,
+    "reviewEventCount": 0,
+    "coverage": [
+      {
+        "startDate": "2026-10-05",
+        "endDate": "2026-10-07",
+        "state": "complete",
+        "sourceIds": ["source_demo_001"],
+        "reasonCode": null
+      }
+    ]
+  }
+}

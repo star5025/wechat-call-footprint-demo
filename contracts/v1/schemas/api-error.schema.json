@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://call-footprint.local/contracts/v1/api-error.schema.json",
+  "title": "ApiError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "requestId", "error"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "actions"],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_ARGUMENT",
+            "SOURCE_NOT_FOUND",
+            "SOURCE_ACCESS_DENIED",
+            "SOURCE_BUSY",
+            "SNAPSHOT_INCONSISTENT",
+            "UNSUPPORTED_SOURCE",
+            "KEY_UNAVAILABLE",
+            "KEY_VERIFICATION_FAILED",
+            "DATABASE_CORRUPT",
+            "SCHEMA_UNSUPPORTED",
+            "PARSER_FAILED",
+            "INDEX_UNAVAILABLE",
+            "STORAGE_FULL",
+            "OPERATION_CANCELLED",
+            "INTERNAL_ERROR"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "retryable": { "type": "boolean" },
+        "stage": {
+          "enum": [
+            "discovering",
+            "preflight",
+            "snapshotting",
+            "verifying_key",
+            "decrypting",
+            "probing_schema",
+            "parsing",
+            "deduplicating",
+            "checking_quality",
+            "indexing",
+            "cleaning_up",
+            "completed"
+          ]
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null"]
+          }
+        },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "retry",
+              "choose_source",
+              "reauthorize",
+              "close_wechat_and_retry",
+              "import_offline_copy",
+              "view_quality",
+              "export_diagnostics",
+              "clear_local_index",
+              "contact_support"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

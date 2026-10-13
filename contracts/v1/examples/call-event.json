@@ -1,0 +1,39 @@
+{
+  "id": "evt_demo_20261007_004331",
+  "accountId": "acc_demo_primary",
+  "contactId": "contact_demo_yin",
+  "contactSnapshot": {
+    "displayName": "音",
+    "kind": "person"
+  },
+  "conversationId": "conversation_demo_yin",
+  "startedAt": "2026-10-07T00:43:31+08:00",
+  "answeredAt": null,
+  "endedAt": null,
+  "timezone": "Asia/Shanghai",
+  "utcOffsetMinutes": 480,
+  "connectedDurationSeconds": 8249,
+  "mediaType": "video",
+  "direction": "outgoing",
+  "outcome": "completed",
+  "parseConfidence": "confirmed",
+  "identityConfidence": "confirmed",
+  "dedupConfidence": "confirmed",
+  "qualityFlags": [],
+  "excluded": false,
+  "lineage": {
+    "sourceRefs": [
+      {
+        "sourceId": "source_demo_001",
+        "sourceRecordIdHash": "sha256:84ff92691f5bf1e2968f",
+        "sourceDatabaseKind": "demo_fixture",
+        "sourcePartition": "message_0"
+      }
+    ],
+    "adapterId": "demo-call-adapter",
+    "adapterVersion": "1.0.0",
+    "parserVersion": "1.0.0",
+    "dedupVersion": "1.0.0",
+    "normalizedAt": "2026-10-12T12:00:00+08:00"
+  }
+}
