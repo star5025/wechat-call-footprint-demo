@@ -3,6 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Sheets } from "@/components/Sheets";
 import { ImportDialog } from "@/components/ImportDialog";
 import { DataLoadDialog } from "@/components/DataLoadDialog";
+import { ScanConsentDialog } from "@/components/ScanConsentDialog";
 import { useApp } from "@/state/AppContext";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sheets />
       <ImportDialog />
       <DataLoadDialog />
+      <ScanConsentDialog />
       <div className="toast-zone" aria-live="polite">
         {toasts.map((toast) => <div className="toast" key={toast.id}><span>✦</span>{toast.text}</div>)}
       </div>

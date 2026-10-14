@@ -54,6 +54,7 @@ interface AppContextValue {
   importErrors: string[];
   settingsOpen: boolean;
   wechatScanning: boolean;
+  scanConsentOpen: boolean;
   dataLoading: DataLoadingState | null;
   dataLoadSuccess: DataLoadSuccess | null;
   toasts: ToastMessage[];
@@ -65,6 +66,8 @@ interface AppContextValue {
   updateSettings: (patch: Partial<AppSettings>) => Promise<void>;
   chooseImport: () => Promise<void>;
   scanWechat: () => Promise<void>;
+  confirmWechatScan: () => Promise<void>;
+  cancelWechatScan: () => void;
   confirmImport: () => Promise<void>;
   cancelImport: () => void;
   selectLoadedContact: (contactId: string) => Promise<void>;
@@ -87,6 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedEvent, setSelectedEvent] = useState<CallEvent | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wechatScanning, setWechatScanning] = useState(false);
+  const [scanConsentOpen, setScanConsentOpen] = useState(false);
   const [dataLoading, setDataLoading] = useState<DataLoadingState | null>(null);
   const [dataLoadSuccess, setDataLoadSuccess] = useState<DataLoadSuccess | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
@@ -217,11 +221,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const scanWechat = useCallback(async () => {
     if (wechatScanning) return;
-    const consent = window.confirm(
-      "扫描会以只读权限读取当前微信进程内存，用于验证本机数据库密钥；数据库副本会在应用缓存中临时解密，并在正常结束后删除。解析后仅保存联系人名称和通话元数据，不保存聊天正文或密钥；这些元数据当前以未加密 JSON 保存在本机。是否继续？"
-    );
-    if (!consent) return;
     setSettingsOpen(false);
+    setScanConsentOpen(true);
+  }, [wechatScanning]);
+
+  const cancelWechatScan = useCallback(() => setScanConsentOpen(false), []);
+
+  const confirmWechatScan = useCallback(async () => {
+    if (wechatScanning) return;
+    setScanConsentOpen(false);
     setDataLoadSuccess(null);
     setWechatScanning(true);
     setDataLoading({
@@ -345,6 +353,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importErrors,
     settingsOpen,
     wechatScanning,
+    scanConsentOpen,
     dataLoading,
     dataLoadSuccess,
     toasts,
@@ -356,6 +365,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateSettings,
     chooseImport,
     scanWechat,
+    confirmWechatScan,
+    cancelWechatScan,
     confirmImport,
     cancelImport: () => { setImportPreview(null); setImportErrors([]); },
     selectLoadedContact,
@@ -363,10 +374,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearDataset,
     notify
   }), [
-    activeContactId, appInfo, chooseImport, confirmImport, dataLoadSuccess, dataLoading, dataMode, dataset,
-    importErrors, clearDataset, finishWithoutContact, importPreview, navigate, notify, ready, route,
-    scanWechat, selectContact, selectLoadedContact, selectedEvent, settings, settingsOpen, toasts,
-    updateSettings, wechatScanning
+    activeContactId, appInfo, cancelWechatScan, chooseImport, confirmImport, confirmWechatScan,
+    dataLoadSuccess, dataLoading, dataMode, dataset, importErrors, clearDataset, finishWithoutContact,
+    importPreview, navigate, notify, ready, route, scanConsentOpen, scanWechat, selectContact,
+    selectLoadedContact, selectedEvent, settings, settingsOpen, toasts, updateSettings, wechatScanning
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
