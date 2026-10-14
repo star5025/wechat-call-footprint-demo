@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWall, dateRange, filterEvents, summarize } from "@/data/analytics";
+import { buildWall, contributionLevel, dateRange, filterEvents, summarize } from "@/data/analytics";
 import { TEST_DATASET } from "@/data/testDataset.fixture";
 
 describe("call analytics gold standard", () => {
@@ -26,6 +26,22 @@ describe("call analytics gold standard", () => {
     expect(result.days.reduce((sum, day) => sum + day.callCount, 0)).toBe(22);
     expect(result.days.reduce((sum, day) => sum + day.durationSeconds, 0)).toBe(44_352);
     expect(result.days.find((day) => day.date === "2026-10-07")?.durationSeconds).toBe(8_249);
+  });
+
+  it("keeps missed-only days visible on the contribution wall", () => {
+    const missedOnlyDay = {
+      date: "2026-10-14",
+      callCount: 1,
+      connectedCount: 0,
+      durationSeconds: 0,
+      videoCount: 1,
+      voiceCount: 0,
+      unknownMediaCount: 0,
+      coverage: "complete" as const,
+      qualityFlags: []
+    };
+    expect(contributionLevel(missedOnlyDay, "duration", 8_249)).toBe(1);
+    expect(contributionLevel(missedOnlyDay, "count", 5)).toBe(1);
   });
 
   it("distinguishes missing coverage from zero events", () => {

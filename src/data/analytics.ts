@@ -13,6 +13,16 @@ export const isConnected = (event: CallEvent): boolean =>
 export const localDate = (dateTime: string | null): string | null =>
   dateTime?.slice(0, 10) ?? null;
 
+export function contributionLevel(
+  day: ContributionDay,
+  metric: "duration" | "count",
+  max: number
+): number {
+  if (!day.callCount || !max) return 0;
+  const value = metric === "duration" ? day.durationSeconds : day.callCount;
+  return Math.max(1, Math.min(4, Math.ceil(value / max * 4)));
+}
+
 export function filterEvents(
   dataset: AppDataset,
   contactId: string | null,
