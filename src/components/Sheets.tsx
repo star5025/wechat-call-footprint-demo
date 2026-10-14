@@ -74,7 +74,6 @@ export function Sheets() {
               <div className="detail-row"><span>结束状态</span><strong>{outcomeLabel(selectedEvent.outcome)}</strong></div>
               <div className="detail-row"><span>数据状态</span><strong>{selectedEvent.qualityFlags.length ? "需要留意" : "可靠"}</strong></div>
             </div>
-            <div className="sheet-note">所有内容都在本机处理。应用只保存规范化通话元数据，不包含聊天正文或数据库密钥。</div>
           </>
         )}
       </aside>

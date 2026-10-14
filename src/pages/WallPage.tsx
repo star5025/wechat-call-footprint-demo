@@ -28,6 +28,11 @@ export function WallPage() {
   const [start, setStart] = useState("2026-09-22");
   const [end, setEnd] = useState("2026-10-07");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<{
+    day: ContributionDay;
+    x: number;
+    y: number;
+  } | null>(null);
   const range = useMemo(() => rangeFor(mode, year, month, start, end, dataset.timezone), [mode, year, month, start, end, dataset.timezone]);
   const wall = useMemo(() => buildWall(dataset, activeContactId, range), [dataset, activeContactId, range]);
   const rangeEvents = useMemo(() => filterEvents(dataset, activeContactId, range.startDate, range.endDate), [dataset, activeContactId, range]);
@@ -54,6 +59,15 @@ export function WallPage() {
     setMonth(`${next.getFullYear()}-${pad(next.getMonth() + 1)}`);
   };
 
+  const showDayTooltip = (day: ContributionDay, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    setHoveredDay({
+      day,
+      x: Math.max(110, Math.min(window.innerWidth - 110, rect.left + rect.width / 2)),
+      y: Math.max(95, rect.top - 10)
+    });
+  };
+
   return (
     <section className="view active">
       <header className="wall-header">
@@ -78,9 +92,21 @@ export function WallPage() {
 
       <section className={`contribution-card mode-${mode}`}>
         <div className="contribution-topline"><div><h2>{title}</h2><p>{wall.quality.overallState === "partial" ? "虚线格表示该日期没有可读取的数据覆盖" : "颜色越深，这一天聊得越久"}</p></div><div className="wall-legend"><span>少</span>{[0,1,2,3,4].map((level) => <i key={level} data-level={level} />)}<span>多</span></div></div>
-        <div className="wall-scroll"><div className="wall-months" style={{ gridTemplateColumns: `repeat(${Math.ceil((lead + wall.days.length) / 7)}, var(--wall-cell, 14px))` }}>{monthStarts.map((item) => <span className="wall-month-label" key={item.date} style={{ gridColumn: `${item.column}/span 3` }}>{Number(item.date.slice(5,7))}月</span>)}</div><div className="wall-grid-wrap"><div className="wall-weekdays"><span>一</span><span /><span>三</span><span /><span>五</span><span /><span>日</span></div><div className="contribution-grid">{Array.from({ length: lead }, (_, index) => <span className="wall-cell blank" key={`blank-${index}`} />)}{wall.days.map((day) => <button key={day.date} className={`wall-cell ${day.coverage}`} data-level={contributionLevel(day, metric, max)} aria-label={`${formatDate(day.date)}，${day.callCount} 条通话记录`} onClick={() => setSelectedDate(day.date)} />)}</div></div></div>
+        <div className="wall-scroll"><div className="wall-months" style={{ gridTemplateColumns: `repeat(${Math.ceil((lead + wall.days.length) / 7)}, var(--wall-cell, 14px))` }}>{monthStarts.map((item) => <span className="wall-month-label" key={item.date} style={{ gridColumn: `${item.column}/span 3` }}>{Number(item.date.slice(5,7))}月</span>)}</div><div className="wall-grid-wrap"><div className="wall-weekdays"><span>一</span><span /><span>三</span><span /><span>五</span><span /><span>日</span></div><div className="contribution-grid">{Array.from({ length: lead }, (_, index) => <span className="wall-cell blank" key={`blank-${index}`} />)}{wall.days.map((day) => <button key={day.date} className={`wall-cell ${day.coverage}`} data-level={contributionLevel(day, metric, max)} aria-label={`${formatDate(day.date)}，${day.callCount} 条通话记录，共 ${formatDuration(day.durationSeconds)}`} onMouseEnter={(event) => showDayTooltip(day, event.currentTarget)} onMouseLeave={() => setHoveredDay(null)} onFocus={(event) => showDayTooltip(day, event.currentTarget)} onBlur={() => setHoveredDay(null)} onClick={() => setSelectedDate(day.date)} />)}</div></div></div>
         <div className="wall-footnote"><span><b /> 有通话记录</span><span>轻点任意一天查看详情</span><span className={wall.quality.overallState === "partial" ? "quality-pill warning" : "quality-pill"}>{wall.quality.overallState === "partial" ? "部分数据" : "数据完整"}</span></div>
       </section>
+
+      {hoveredDay && (
+        <div
+          className="wall-hover-card"
+          role="tooltip"
+          style={{ left: hoveredDay.x, top: hoveredDay.y }}
+        >
+          <strong>{formatDate(hoveredDay.day.date)}</strong>
+          <span>{formatDuration(hoveredDay.day.durationSeconds)}</span>
+          <small>{hoveredDay.day.callCount} 条记录 · {hoveredDay.day.connectedCount} 次接通</small>
+        </div>
+      )}
 
       {selectedDate && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>{selectedEvents.length ? `这一天有 ${selectedEvents.length} 条记录` : "安静的一天"}</h2><p>{selectedEvents.length ? `共计 ${formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}` : wall.days.find((day) => day.date === selectedDate)?.coverage === "complete" ? "当天有完整数据覆盖，但没有发现通话记录。" : "当天没有可读取的数据覆盖，不能判断是否有通话。"}</p></div>{selectedEvents.length > 0 && <div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "▻" : "◖"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div>}</section>}
 
