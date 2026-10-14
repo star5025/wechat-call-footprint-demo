@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from "react";
@@ -91,12 +92,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const promptedEmptyRoutes = useRef(new Set<AppRoute>());
 
   const notify = useCallback((text: string) => {
     const id = ++toastId;
     setToasts((items) => [...items, { id, text }]);
     window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 2800);
   }, []);
+
+  useEffect(() => {
+    if (dataMode === "imported") promptedEmptyRoutes.current.clear();
+  }, [dataMode]);
 
   useEffect(() => {
     void (async () => {
@@ -108,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ]);
         const nextSettings = { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
         setSettings(nextSettings);
-        setRoute(storedDataset ? nextSettings.lastRoute : "home");
+        setRoute(nextSettings.lastRoute);
         setAppInfo(info);
         if (storedDataset) {
           setDataset(storedDataset);
@@ -140,9 +146,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [notify]);
 
   const navigate = useCallback((nextRoute: AppRoute) => {
-    if (nextRoute !== "home" && dataset.events.length === 0) {
-      notify("请先导入通话记录后使用此功能");
-      return;
+    if (
+      nextRoute !== "home" &&
+      dataset.events.length === 0 &&
+      !promptedEmptyRoutes.current.has(nextRoute)
+    ) {
+      promptedEmptyRoutes.current.add(nextRoute);
+      notify("导入通话记录后可使用完整功能");
     }
     setRoute(nextRoute);
     void persistSettings({ ...settings, lastRoute: nextRoute });
