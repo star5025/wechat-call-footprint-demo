@@ -177,15 +177,15 @@ export function buildInsights(events: CallEvent[]): InsightView[] {
     {
       id: "night",
       tone: "night",
-      eyebrow: "开始时段",
-      title: "晚间通话",
+      eyebrow: "常见时刻",
+      title: "夜晚通话较多",
       description: `${nightCount} 次已接通通话在晚上 8 点后开始。`,
       sampleSize: connected.length
     },
     {
       id: "duration",
       tone: "mint",
-      eyebrow: "通话时长",
+      eyebrow: "聊了多久",
       title: "超过 30 分钟的通话",
       description: `${connected.length} 次接通中，有 ${overThirty} 次超过半小时。`,
       value: String(overThirty),
@@ -194,9 +194,9 @@ export function buildInsights(events: CallEvent[]): InsightView[] {
     {
       id: "weekday",
       tone: "peach",
-      eyebrow: "记录最多的星期",
+      eyebrow: "最常出现",
       title: weekdayNames[activeWeekday] ?? "暂无",
-      description: "该星期的已接通记录数量最多。",
+      description: "这一天的已接通记录最多。",
       sampleSize: connected.length
     }
   ];
