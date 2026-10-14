@@ -63,7 +63,7 @@ export function HomePage() {
 
           <section className="soft-panel rhythm-panel">
             <div className="section-heading"><div><span className="section-emoji">〰</span><div><h2>近期接通统计</h2></div></div><div className="soft-tabs"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>次数</button></div></div>
-            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，已接通 ${day.connectedCount} 次，${formatDuration(day.durationSeconds)}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }} /></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
+            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatDuration(day.durationSeconds) : `${day.connectedCount} 次`; return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metricValue}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip"><strong>{formatDate(day.date)}</strong><small>{metricValue}</small></span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
           </section>
 
           <section className="bottom-row">
