@@ -51,6 +51,7 @@ pub fn parse_snapshot(
     let plaintext_dir = snapshot.root.join("plaintext");
     let (contacts, contact_wal_omitted) =
         load_contacts(&snapshot.contact_database, &plaintext_dir, passphrase)?;
+    let account_display_name = resolve_account_display_name(account, &contacts);
     let mut warnings = Vec::new();
     let mut parsed_calls = Vec::new();
     let mut dedup = HashSet::new();
@@ -192,7 +193,7 @@ pub fn parse_snapshot(
             },
             account: Account {
                 id: account_id,
-                display_name: "我".into(),
+                display_name: account_display_name,
                 avatar_ref: avatars.get(&account.account_wxid).cloned(),
             },
             contacts: canonical_contacts,
@@ -743,6 +744,23 @@ fn format_timestamp(timestamp: i64) -> Option<String> {
         .map(|value| value.to_rfc3339())
 }
 
+fn resolve_account_display_name(
+    account: &WechatAccount,
+    contacts: &HashMap<String, ContactRecord>,
+) -> String {
+    contacts
+        .get(&account.account_wxid)
+        .map(|record| record.display_name.trim())
+        .filter(|name| {
+            !name.is_empty()
+                && *name != account.account_wxid
+                && *name != account.account_name
+                && *name != "未知联系人"
+        })
+        .map(str::to_owned)
+        .unwrap_or_else(|| "微信用户".into())
+}
+
 fn fallback_contact(username: &str) -> ContactRecord {
     ContactRecord {
         display_name: "未知联系人".into(),
@@ -773,6 +791,44 @@ fn digest_hex(value: &[u8], length: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolves_account_name_from_self_contact() {
+        let account = WechatAccount {
+            account_name: "wxid_owner_1234".into(),
+            account_wxid: "wxid_owner".into(),
+            message_databases: Vec::new(),
+            contact_database: std::path::PathBuf::new(),
+            head_image_database: None,
+        };
+        let contacts = HashMap::from([(
+            "wxid_owner".into(),
+            ContactRecord {
+                display_name: "微信昵称".into(),
+                wechat_id: "wxid_owner".into(),
+                kind: "person",
+            },
+        )]);
+        assert_eq!(
+            resolve_account_display_name(&account, &contacts),
+            "微信昵称"
+        );
+    }
+
+    #[test]
+    fn uses_neutral_account_name_when_self_contact_is_missing() {
+        let account = WechatAccount {
+            account_name: "wxid_owner_1234".into(),
+            account_wxid: "wxid_owner".into(),
+            message_databases: Vec::new(),
+            contact_database: std::path::PathBuf::new(),
+            head_image_database: None,
+        };
+        assert_eq!(
+            resolve_account_display_name(&account, &HashMap::new()),
+            "微信用户"
+        );
+    }
 
     #[test]
     fn parses_completed_duration() {

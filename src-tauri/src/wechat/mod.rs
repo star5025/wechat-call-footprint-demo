@@ -293,6 +293,11 @@ mod tests {
         assert!(result.summary.database_shards > 0);
         assert!(result.summary.call_events > 0);
         assert_eq!(result.dataset.format, "call-footprint-export");
+        assert_ne!(result.dataset.account.display_name, "我");
+        assert_ne!(
+            result.dataset.account.display_name, "微信用户",
+            "local self contact should provide the WeChat nickname"
+        );
         assert_eq!(progress.last(), Some(&100));
         assert!(progress.windows(2).all(|pair| pair[0] <= pair[1]));
         assert!(result.dataset.account.avatar_ref.is_some());
