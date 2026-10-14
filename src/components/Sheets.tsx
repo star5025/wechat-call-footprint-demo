@@ -119,7 +119,6 @@ export function Sheets() {
               <div className="detail-row"><span>发起方向</span><strong>{directionLabel(selectedEvent.direction)}</strong></div>
               <div className="detail-row"><span>通话类型</span><strong>{mediaLabel(selectedEvent.mediaType)}</strong></div>
               <div className="detail-row"><span>结束状态</span><strong>{outcomeLabel(selectedEvent.outcome)}</strong></div>
-              <div className="detail-row"><span>数据状态</span><strong>{selectedEvent.qualityFlags.length ? "需要留意" : "可靠"}</strong></div>
             </div>
           </>
         )}
