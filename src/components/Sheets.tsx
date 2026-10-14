@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/state/AppContext";
 import { anonymizeDataset } from "@/data/dataset";
 import { exportJson } from "@/native/bridge";
@@ -28,18 +28,35 @@ export function Sheets() {
     appInfo,
     notify
   } = useApp();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const anyOpen = Boolean(selectedEvent || settingsOpen);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (deleteConfirmOpen) {
+          if (!deleting) setDeleteConfirmOpen(false);
+          return;
+        }
         closeEvent();
         setSettingsOpen(false);
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeEvent, setSettingsOpen]);
+  }, [closeEvent, deleteConfirmOpen, deleting, setSettingsOpen]);
+
+  const confirmDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await clearDataset();
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const exportData = async (anonymized: boolean) => {
     try {
@@ -97,13 +114,36 @@ export function Sheets() {
             <span className="setting-icon blue-setting">♢</span><span><strong>脱敏导出</strong><small>隐藏联系人和来源标识</small></span><i>›</i>
           </button>
           {dataMode === "imported" && (
-            <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => void clearDataset()}>
+            <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => setDeleteConfirmOpen(true)}>
               <span className="setting-icon danger-icon">×</span><span><strong>删除本地通话数据</strong><small>不会修改或删除微信原始文件</small></span><i>›</i>
             </button>
           )}
         </div>
         <div className="local-note"><span>✓</span><p><strong>本地数据</strong><br />当前数据：{dataMode === "empty" ? "尚未连接" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
       </aside>
+
+      {deleteConfirmOpen && (
+        <div className="modal-backdrop delete-confirm-backdrop" role="presentation" onMouseDown={() => !deleting && setDeleteConfirmOpen(false)}>
+          <section
+            className="delete-confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+            aria-describedby="delete-confirm-description"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="modal-close" disabled={deleting} aria-label="取消删除" onClick={() => setDeleteConfirmOpen(false)}>×</button>
+            <span className="delete-confirm-orb" aria-hidden="true">×</span>
+            <h2 id="delete-confirm-title">确认删除本地通话数据？</h2>
+            <p id="delete-confirm-description">删除后，应用中的联系人和通话统计将被清空。</p>
+            <div className="delete-confirm-note"><span>✓</span><p>不会修改或删除微信原始文件。之后可以重新扫描或导入数据。</p></div>
+            <div className="dialog-buttons delete-confirm-actions">
+              <button className="secondary-action" disabled={deleting} onClick={() => setDeleteConfirmOpen(false)}>取消</button>
+              <button className="danger-action" disabled={deleting} onClick={() => void confirmDelete()}>{deleting ? "正在删除…" : "确认删除"}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
