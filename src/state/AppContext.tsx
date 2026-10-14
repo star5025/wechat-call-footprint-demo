@@ -190,7 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       detail: "数据已完成验证并保存到本机",
       progress: 100
     } : current);
-    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
     setDataset(nextDataset);
     setDataMode("imported");
     setActiveContactId(null);

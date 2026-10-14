@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ContactAvatar } from "@/components/ContactAvatar";
 import { useApp } from "@/state/AppContext";
 
@@ -14,9 +14,42 @@ export function DataLoadDialog() {
     finishWithoutContact
   } = useApp();
   const [search, setSearch] = useState("");
+  const [displayedProgress, setDisplayedProgress] = useState(0);
+  const displayedProgressRef = useRef(0);
+
   useEffect(() => {
     if (dataLoadSuccess) setSearch("");
   }, [dataLoadSuccess]);
+
+  useEffect(() => {
+    if (!dataLoading) {
+      displayedProgressRef.current = 0;
+      setDisplayedProgress(0);
+      return;
+    }
+
+    const target = Math.max(0, Math.min(100, dataLoading.progress));
+    const startValue = displayedProgressRef.current;
+    if (target <= startValue) {
+      displayedProgressRef.current = target;
+      setDisplayedProgress(target);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const duration = Math.min(650, Math.max(280, (target - startValue) * 14));
+    let frame = 0;
+    const animate = (now: number) => {
+      const elapsed = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
+      const next = Math.min(target, startValue + (target - startValue) * eased);
+      displayedProgressRef.current = next;
+      setDisplayedProgress(next);
+      if (elapsed < 1) frame = window.requestAnimationFrame(animate);
+    };
+    frame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(frame);
+  }, [dataLoading]);
 
   const callCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -43,15 +76,15 @@ export function DataLoadDialog() {
           <span className="simple-loading-icon" aria-hidden="true">⌁</span>
           <h2 id="data-loading-title">{dataLoading.title}</h2>
           <p>{dataLoading.detail}</p>
-          <div className="actual-progress-label"><span>处理进度</span><strong>{dataLoading.progress}%</strong></div>
+          <div className="actual-progress-label"><span>处理进度</span><strong>{Math.round(displayedProgress)}%</strong></div>
           <div
             className="actual-progress-track"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={dataLoading.progress}
+            aria-valuenow={Math.round(displayedProgress)}
           >
-            <i style={{ width: `${dataLoading.progress}%` }} />
+            <i style={{ width: `${displayedProgress}%` }} />
           </div>
           <small>进度来自本机实际处理阶段，请不要关闭应用</small>
         </section>
