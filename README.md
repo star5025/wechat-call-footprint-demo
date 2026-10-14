@@ -10,10 +10,9 @@
 - 使用类似 GitHub Contribution Graph 的“时光墙”，按一年、一个月或自定义范围回看；
 - 查看通话日期、时间、类型、方向、结果和已接通时长；
 - 显示描述性“小发现”，但不评价关系或推断情绪；
-- 一键隐藏联系人名称，便于投屏或分享画面；
 - 在明确授权后，只读扫描本机 Windows 微信 4.1.15.13 的联系人和通话元数据；
 - 导入符合 Contract v1 的标准 JSON；
-- 导出完整私人 JSON 或脱敏 JSON；
+- 导出完整的本地通话数据 JSON；
 - 将设置和导入数据保存在本机应用目录，可随时删除。
 
 ## 当前数据范围
@@ -68,7 +67,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ```text
 src/                    React + TypeScript 桌面 UI
-src/data/               Demo 数据、聚合、导入校验和脱敏导出
+src/data/               数据聚合、导入校验和测试 fixture
 src/native/             Tauri IPC / 浏览器预览桥接层
 src-tauri/              Rust 本地能力与 Windows 打包配置
 contracts/v1/           稳定的领域类型、JSON Schema 和示例
@@ -86,7 +85,6 @@ scripts/                Contract 校验脚本
 - 自动扫描需要用户明确确认，密钥只在进程内存短暂使用；
 - 规范化联系人与通话元数据当前以未加密 JSON 保存在本机应用目录，可随时删除；
 - 导入和导出均由用户主动选择文件；
-- 脱敏导出会移除联系人名称、别名、头像引用和来源记录哈希，并重新随机映射全部稳定 ID；
 - 不根据通话频率评价关系或推断情绪。
 
 ## 产品与架构文档

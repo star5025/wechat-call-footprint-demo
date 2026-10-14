@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anonymizeDataset, parseDataset, validateDataset } from "@/data/dataset";
+import { parseDataset, validateDataset } from "@/data/dataset";
 import { TEST_DATASET } from "@/data/testDataset.fixture";
 import { createEmptyDataset } from "@/data/emptyDataset";
 
@@ -27,21 +27,5 @@ describe("dataset validation", () => {
     const result = validateDataset({ ...TEST_DATASET, contractVersion: "2.0" });
     expect(result.valid).toBe(false);
     expect(result.errors.join(" ")).toContain("契约主版本");
-  });
-
-  it("removes identity data from anonymized exports", () => {
-    const result = anonymizeDataset(TEST_DATASET);
-    expect(result.account.displayName).toBe("匿名账号");
-    expect(result.contacts[0].displayName).toBe("匿名联系人 1");
-    expect(result.contacts[0].aliases).toEqual([]);
-    expect(result.events[0].contactSnapshot.displayName).toBe("匿名联系人 1");
-    expect(result.events[0].lineage.sourceRefs[0].sourceRecordIdHash).toBe("redacted-record-id");
-    expect(result.account.id).not.toBe(TEST_DATASET.account.id);
-    expect(result.contacts[0].id).not.toBe(TEST_DATASET.contacts[0].id);
-    expect(result.events[0].id).not.toBe(TEST_DATASET.events[0].id);
-    expect(result.events[0].lineage.sourceRefs[0].sourceId).not.toBe(
-      TEST_DATASET.events[0].lineage.sourceRefs[0].sourceId
-    );
-    expect(validateDataset(result).valid).toBe(true);
   });
 });

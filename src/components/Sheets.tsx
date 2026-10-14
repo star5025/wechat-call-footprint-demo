@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useApp } from "@/state/AppContext";
-import { anonymizeDataset } from "@/data/dataset";
 import { exportJson } from "@/native/bridge";
 import {
   directionLabel,
@@ -17,8 +16,6 @@ export function Sheets() {
     closeEvent,
     settingsOpen,
     setSettingsOpen,
-    settings,
-    updateSettings,
     dataset,
     dataMode,
     chooseImport,
@@ -93,11 +90,9 @@ export function Sheets() {
     }
   };
 
-  const exportData = async (anonymized: boolean) => {
+  const exportData = async () => {
     try {
-      const target = anonymized ? anonymizeDataset(dataset) : dataset;
-      const suffix = anonymized ? "anonymous" : "private";
-      const result = await exportJson(`call-footprint-${suffix}.json`, target);
+      const result = await exportJson("call-footprint-private.json", dataset);
       if (result) notify(`导出完成：${result.path}`);
     } catch (error) {
       notify(`导出失败：${String(error)}`);
@@ -112,8 +107,8 @@ export function Sheets() {
         {selectedEvent && (
           <>
             <div className="sheet-hero">
-              <div className="sheet-avatar">{settings.privacyMode ? "♡" : selectedEvent.contactSnapshot.displayName?.slice(0, 1) ?? "?"}</div>
-              <h2>{settings.privacyMode ? `联系人 · ${mediaLabel(selectedEvent.mediaType)}` : `${selectedEvent.contactSnapshot.displayName ?? "未知联系人"} · ${mediaLabel(selectedEvent.mediaType)}`}</h2>
+              <div className="sheet-avatar">{selectedEvent.contactSnapshot.displayName?.slice(0, 1) ?? "?"}</div>
+              <h2>{selectedEvent.contactSnapshot.displayName ?? "未知联系人"} · {mediaLabel(selectedEvent.mediaType)}</h2>
               <p>{selectedEvent.startedAt ? `${formatDate(selectedEvent.startedAt.slice(0, 10))} · ${formatTime(selectedEvent.startedAt)}` : "时间未知"}</p>
             </div>
             <div className="sheet-duration">
@@ -133,20 +128,14 @@ export function Sheets() {
       <aside className={`settings-sheet ${settingsOpen ? "open" : ""}`} aria-hidden={!settingsOpen}>
         <header><div><h2>设置</h2></div><button onClick={() => setSettingsOpen(false)}>×</button></header>
         <div className="setting-list">
-          <button className="setting-item" onClick={() => void updateSettings({ privacyMode: !settings.privacyMode })}>
-            <span className="setting-icon lavender">◉</span><span><strong>隐藏联系人名称</strong><small>在界面中隐藏联系人名称和头像</small></span><i>{settings.privacyMode ? "开启" : "关闭"}</i>
-          </button>
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
             <span className="setting-icon mint">{wechatScanning ? "···" : "⌁"}</span><span><strong>{wechatScanning ? "正在读取微信记录" : "扫描本机微信"}</strong><small>{wechatScanning ? "请保持微信登录" : "只读访问微信文件和进程内存"}</small></span><i>{wechatScanning ? "请稍候" : "›"}</i>
           </button>
           <button className="setting-item" disabled={wechatScanning} onClick={() => void chooseImport()}>
             <span className="setting-icon lavender">⇩</span><span><strong>导入通话数据</strong><small>自动扫描不可用时选择 v1 JSON</small></span><i>›</i>
           </button>
-          <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData(false)}>
+          <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData()}>
             <span className="setting-icon peach">⇧</span><span><strong>完整数据导出</strong><small>可重新导入，包含联系人名称</small></span><i>›</i>
-          </button>
-          <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData(true)}>
-            <span className="setting-icon blue-setting">♢</span><span><strong>脱敏导出</strong><small>隐藏联系人和来源标识</small></span><i>›</i>
           </button>
           {dataMode === "imported" && (
             <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => setDeleteConfirmOpen(true)}>

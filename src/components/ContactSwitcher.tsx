@@ -3,7 +3,7 @@ import { ContactAvatar } from "@/components/ContactAvatar";
 import { useApp } from "@/state/AppContext";
 
 export function ContactSwitcher() {
-  const { dataset, activeContactId, selectContact, settings } = useApp();
+  const { dataset, activeContactId, selectContact } = useApp();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
@@ -17,14 +17,13 @@ export function ContactSwitcher() {
   }, []);
 
   if (!contact) return null;
-  const displayName = settings.privacyMode ? "联系人" : contact.displayName;
   return (
     <div className="contact-switch-wrap" ref={root}>
       <button className="contact-switch" onClick={() => setOpen((value) => !value)}>
-        <ContactAvatar contact={contact} privacyMode={settings.privacyMode} className="mini-avatar" />
+        <ContactAvatar contact={contact} className="mini-avatar" />
         <span className="contact-switch-copy">
           <small>正在查看</small>
-          <strong>{displayName}</strong>
+          <strong>{contact.displayName}</strong>
         </span>
         <b>⌄</b>
       </button>
@@ -32,9 +31,9 @@ export function ContactSwitcher() {
         <div className="contact-menu-react">
           {dataset.contacts.map((item) => (
             <button key={item.id} onClick={() => { selectContact(item.id); setOpen(false); }}>
-              <ContactAvatar contact={item} privacyMode={settings.privacyMode} className="mini-avatar" />
+              <ContactAvatar contact={item} className="mini-avatar" />
               <span>
-                <strong>{settings.privacyMode ? "联系人" : item.displayName}</strong>
+                <strong>{item.displayName}</strong>
                 <small>{item.needsReview ? "身份需要确认" : "已识别联系人"}</small>
               </span>
               {item.id === activeContactId && <b>✓</b>}

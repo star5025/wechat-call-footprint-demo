@@ -6,7 +6,7 @@ import { useApp } from "@/state/AppContext";
 import { directionLabel, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel } from "@/utils/format";
 
 export function CallsPage() {
-  const { dataset, activeContactId, settings, openEvent } = useApp();
+  const { dataset, activeContactId, openEvent } = useApp();
   const [filter, setFilter] = useState<CallFilterMode>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -36,7 +36,7 @@ export function CallsPage() {
             <h3>{date === "unknown" ? "时间未知" : formatDate(date)} · {items.length} 次</h3>
             {items.map((event) => {
               const connected = (event.connectedDurationSeconds ?? 0) > 0;
-              const displayName = settings.privacyMode ? "联系人" : event.contactSnapshot.displayName ?? "未知联系人";
+              const displayName = event.contactSnapshot.displayName ?? "未知联系人";
               return <button className="feed-card" key={event.id} onClick={() => openEvent(event)}><span className={`feed-icon ${connected ? event.mediaType : "missed"}`}>{connected ? event.mediaType === "video" ? "▻" : "◖" : "×"}</span><span className="feed-main"><strong>和{displayName}的{mediaLabel(event.mediaType)}</strong><small>{directionLabel(event.direction)} · {outcomeLabel(event.outcome)}{event.qualityFlags.length ? " · 需留意" : ""}</small></span><span className="feed-time"><strong>{connected ? formatDuration(event.connectedDurationSeconds) : outcomeLabel(event.outcome)}</strong><small>{formatTime(event.startedAt)}</small></span></button>;
             })}
           </section>

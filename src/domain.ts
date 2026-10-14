@@ -40,7 +40,6 @@ export interface AppDataset {
 
 export interface AppSettings {
   settingsVersion: 1;
-  privacyMode: boolean;
   reducedMotion: boolean;
   weekStartsOn: "monday" | "sunday";
   timezone: string;
@@ -125,7 +124,6 @@ export interface InsightView {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   settingsVersion: 1,
-  privacyMode: false,
   reducedMotion: false,
   weekStartsOn: "monday",
   timezone: "Asia/Shanghai",

@@ -63,7 +63,6 @@ interface AppContextValue {
   openEvent: (event: CallEvent) => void;
   closeEvent: () => void;
   setSettingsOpen: (open: boolean) => void;
-  updateSettings: (patch: Partial<AppSettings>) => Promise<void>;
   chooseImport: () => Promise<void>;
   scanWechat: () => Promise<void>;
   confirmWechatScan: () => Promise<void>;
@@ -172,10 +171,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const selectContact = useCallback((contactId: string | null) => {
     setActiveContactId(contactId);
     void persistSettings({ ...settings, lastContactId: contactId });
-  }, [persistSettings, settings]);
-
-  const updateSettings = useCallback(async (patch: Partial<AppSettings>) => {
-    await persistSettings({ ...settings, ...patch });
   }, [persistSettings, settings]);
 
   const finishDataLoad = useCallback(async (
@@ -362,7 +357,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     openEvent: setSelectedEvent,
     closeEvent: () => setSelectedEvent(null),
     setSettingsOpen,
-    updateSettings,
     chooseImport,
     scanWechat,
     confirmWechatScan,
@@ -377,7 +371,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activeContactId, appInfo, cancelWechatScan, chooseImport, confirmImport, confirmWechatScan,
     dataLoadSuccess, dataLoading, dataMode, dataset, importErrors, clearDataset, finishWithoutContact,
     importPreview, navigate, notify, ready, route, scanConsentOpen, scanWechat, selectContact,
-    selectLoadedContact, selectedEvent, settings, settingsOpen, toasts, updateSettings, wechatScanning
+    selectLoadedContact, selectedEvent, settings, settingsOpen, toasts, wechatScanning
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

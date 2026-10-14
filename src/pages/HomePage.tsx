@@ -13,7 +13,7 @@ const formatChartDuration = (seconds: number) => {
 };
 
 export function HomePage() {
-  const { dataset, activeContactId, navigate, openEvent, settings, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
+  const { dataset, activeContactId, navigate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
   const events = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const summary = useMemo(() => summarize(events), [events]);
@@ -26,7 +26,7 @@ export function HomePage() {
   const longest = events.find((event) => event.id === summary.longestEventId) ?? null;
   const latest = events[0] ?? null;
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
-  const contactName = settings.privacyMode ? "联系人" : contact?.displayName ?? "联系人";
+  const contactName = contact?.displayName ?? "联系人";
   const hours = Math.floor(summary.totalDurationSeconds / 3600);
   const minutes = Math.floor((summary.totalDurationSeconds % 3600) / 60);
   const videoCount = events.filter((event) => event.mediaType === "video" && (event.connectedDurationSeconds ?? 0) > 0).length;
@@ -58,7 +58,7 @@ export function HomePage() {
           <section className="memory-hero">
             <div className="hero-glow glow-a" /><div className="hero-glow glow-b" />
             <div className="hero-copy"><span className="soft-label">接通总时长</span><div className="big-number"><strong>{hours}</strong><span>小时</span><strong>{minutes}</strong><span>分</span></div><p>{formatDate(recentStart)}到 {formatDate(recentEnd)}</p><button className="hero-button" onClick={() => navigate("calls")}>查看记录 <span>→</span></button></div>
-            <div className="connection-art" aria-hidden="true"><div className="person-profile"><Avatar avatarRef={dataset.account.avatarRef} label="我" privacyMode={settings.privacyMode} className="person person-me" /><small>{settings.privacyMode ? "我" : dataset.account.displayName}</small></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div>{contact && <div className="person-profile"><ContactAvatar contact={contact} privacyMode={settings.privacyMode} className="person person-you" /><small>{settings.privacyMode ? "联系人" : contact.displayName}</small></div>}<div className="float-note note-one">♡</div><div className="float-note note-two">✦</div></div>
+            <div className="connection-art" aria-hidden="true"><div className="person-profile"><Avatar avatarRef={dataset.account.avatarRef} label="我" className="person person-me" /><small>{dataset.account.displayName}</small></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div>{contact && <div className="person-profile"><ContactAvatar contact={contact} className="person person-you" /><small>{contact.displayName}</small></div>}<div className="float-note note-one">♡</div><div className="float-note note-two">✦</div></div>
             <div className="hero-chips"><span>📹 视频 {videoCount} 次</span><span>🎙 语音 {voiceCount} 次</span><span>✨ 共接通 {summary.connectedCount} 次</span></div>
           </section>
 
