@@ -90,32 +90,65 @@ export function makeImportPreview(
 }
 
 export function anonymizeDataset(dataset: AppDataset): AppDataset {
-  const contactMap = new Map(dataset.contacts.map((contact, index) => [contact.id, `匿名联系人 ${index + 1}`]));
+  const randomId = (prefix: string) => `${prefix}_${globalThis.crypto.randomUUID().replaceAll("-", "")}`;
+  const accountId = randomId("acc");
+  const contactIds = new Map(dataset.contacts.map((contact) => [contact.id, randomId("contact")]));
+  const contactNames = new Map(dataset.contacts.map((contact, index) => [contact.id, `匿名联系人 ${index + 1}`]));
+  const eventIds = new Map(dataset.events.map((event) => [event.id, randomId("evt")]));
+  const conversationIds = new Map(
+    dataset.events
+      .map((event) => event.conversationId)
+      .filter((id): id is string => Boolean(id))
+      .map((id) => [id, randomId("conversation")])
+  );
+  const sourceIds = new Map<string, string>();
+  for (const event of dataset.events) {
+    for (const source of event.lineage.sourceRefs) {
+      if (!sourceIds.has(source.sourceId)) sourceIds.set(source.sourceId, randomId("source"));
+    }
+  }
+  for (const interval of dataset.coverage) {
+    for (const sourceId of interval.sourceIds) {
+      if (!sourceIds.has(sourceId)) sourceIds.set(sourceId, randomId("source"));
+    }
+  }
+
   return {
     ...structuredClone(dataset),
     exportedAt: new Date().toISOString(),
     source: { ...dataset.source, displayName: "脱敏导出", sourceVersion: null },
-    account: { ...dataset.account, displayName: "匿名账号" },
+    account: { id: accountId, displayName: "匿名账号" },
     contacts: dataset.contacts.map((contact, index) => ({
       ...contact,
+      id: contactIds.get(contact.id)!,
+      accountId,
       displayName: `匿名联系人 ${index + 1}`,
       avatarRef: null,
-      aliases: []
+      aliases: [],
+      mergedFromContactIds: contact.mergedFromContactIds.map((id) => contactIds.get(id)).filter((id): id is string => Boolean(id))
     })),
     events: dataset.events.map((event) => ({
       ...event,
+      id: eventIds.get(event.id)!,
+      accountId,
+      contactId: event.contactId ? contactIds.get(event.contactId) ?? null : null,
+      conversationId: event.conversationId ? conversationIds.get(event.conversationId) ?? null : null,
       contactSnapshot: {
         ...event.contactSnapshot,
-        displayName: event.contactId ? contactMap.get(event.contactId) ?? "匿名联系人" : null
+        displayName: event.contactId ? contactNames.get(event.contactId) ?? "匿名联系人" : null
       },
       lineage: {
         ...event.lineage,
         sourceRefs: event.lineage.sourceRefs.map((source) => ({
-          ...source,
-          sourceRecordIdHash: "redacted",
-          sourcePartition: undefined
+          sourceId: sourceIds.get(source.sourceId) ?? randomId("source"),
+          sourceRecordIdHash: "redacted-record-id",
+          sourceDatabaseKind: "redacted"
         }))
       }
+    })),
+    coverage: dataset.coverage.map((interval) => ({
+      ...interval,
+      sourceIds: interval.sourceIds.map((id) => sourceIds.get(id) ?? randomId("source"))
     }))
   };
 }

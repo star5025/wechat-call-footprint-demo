@@ -68,6 +68,20 @@ export interface ExportResult {
   sizeBytes: number;
 }
 
+export interface WechatScanSummary {
+  wechatVersion: string;
+  accountLabel: string;
+  databaseShards: number;
+  contactsWithCalls: number;
+  callEvents: number;
+  warnings: string[];
+}
+
+export interface WechatScanResult {
+  dataset: AppDataset;
+  summary: WechatScanSummary;
+}
+
 export interface DatasetValidationResult {
   valid: boolean;
   dataset?: AppDataset;

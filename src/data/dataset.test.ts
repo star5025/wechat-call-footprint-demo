@@ -27,6 +27,13 @@ describe("dataset validation", () => {
     expect(result.contacts[0].displayName).toBe("匿名联系人 1");
     expect(result.contacts[0].aliases).toEqual([]);
     expect(result.events[0].contactSnapshot.displayName).toBe("匿名联系人 1");
-    expect(result.events[0].lineage.sourceRefs[0].sourceRecordIdHash).toBe("redacted");
+    expect(result.events[0].lineage.sourceRefs[0].sourceRecordIdHash).toBe("redacted-record-id");
+    expect(result.account.id).not.toBe(DEMO_DATASET.account.id);
+    expect(result.contacts[0].id).not.toBe(DEMO_DATASET.contacts[0].id);
+    expect(result.events[0].id).not.toBe(DEMO_DATASET.events[0].id);
+    expect(result.events[0].lineage.sourceRefs[0].sourceId).not.toBe(
+      DEMO_DATASET.events[0].lineage.sourceRefs[0].sourceId
+    );
+    expect(validateDataset(result).valid).toBe(true);
   });
 });

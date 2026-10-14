@@ -1,6 +1,11 @@
+mod wechat;
+
 use serde::Serialize;
 use serde_json::Value;
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use tauri::{AppHandle, Manager};
 
 const MAX_IMPORT_BYTES: u64 = 50 * 1024 * 1024;
@@ -34,7 +39,10 @@ struct ExportResult {
 }
 
 fn config_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let directory = app.path().app_config_dir().map_err(|error| error.to_string())?;
+    let directory = app
+        .path()
+        .app_config_dir()
+        .map_err(|error| error.to_string())?;
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     Ok(directory)
 }
@@ -93,7 +101,9 @@ fn load_dataset(app: AppHandle) -> Result<Option<String>, String> {
     if !path.exists() {
         return Ok(None);
     }
-    fs::read_to_string(path).map(Some).map_err(|error| error.to_string())
+    fs::read_to_string(path)
+        .map(Some)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -129,14 +139,21 @@ async fn choose_import_file() -> Result<Option<ImportFileResult>, String> {
     }
     let content = fs::read_to_string(path).map_err(|_| "文件必须是 UTF-8 JSON。".to_string())?;
     Ok(Some(ImportFileResult {
-        file_name: path.file_name().and_then(|value| value.to_str()).unwrap_or("import.json").to_string(),
+        file_name: path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("import.json")
+            .to_string(),
         content,
         size_bytes: metadata.len(),
     }))
 }
 
 #[tauri::command]
-async fn export_json(suggested_name: String, content: String) -> Result<Option<ExportResult>, String> {
+async fn export_json(
+    suggested_name: String,
+    content: String,
+) -> Result<Option<ExportResult>, String> {
     if content.len() as u64 > MAX_IMPORT_BYTES {
         return Err("导出内容超过 50 MB 限制。".into());
     }
@@ -158,9 +175,26 @@ async fn export_json(suggested_name: String, content: String) -> Result<Option<E
     }))
 }
 
+#[tauri::command]
+async fn scan_wechat_calls(app: AppHandle) -> Result<wechat::WechatScanResult, String> {
+    let cache_directory = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| error.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || wechat::scan(&cache_directory))
+        .await
+        .map_err(|error| format!("微信扫描任务异常结束：{error}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            if let Ok(cache_directory) = app.path().app_cache_dir() {
+                wechat::cleanup_cache(&cache_directory);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app_info,
             load_settings,
@@ -169,7 +203,8 @@ pub fn run() {
             save_dataset,
             delete_dataset,
             choose_import_file,
-            export_json
+            export_json,
+            scan_wechat_calls
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Call Footprint");
@@ -181,7 +216,8 @@ mod tests {
 
     #[test]
     fn atomic_write_replaces_existing_file() {
-        let directory = std::env::temp_dir().join(format!("call-footprint-test-{}", std::process::id()));
+        let directory =
+            std::env::temp_dir().join(format!("call-footprint-test-{}", std::process::id()));
         fs::create_dir_all(&directory).unwrap();
         let path = directory.join("value.json");
         atomic_write(&path, b"{\"value\":1}").unwrap();

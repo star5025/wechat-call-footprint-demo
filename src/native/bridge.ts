@@ -4,7 +4,8 @@ import type {
   AppInfo,
   AppSettings,
   ExportResult,
-  ImportFileResult
+  ImportFileResult,
+  WechatScanResult
 } from "@/domain";
 
 const isTauriRuntime = () =>
@@ -17,7 +18,7 @@ export async function getAppInfo(): Promise<AppInfo> {
   if (isTauriRuntime()) return invoke<AppInfo>("app_info");
   return {
     name: "通话足迹",
-    version: "0.4.0-browser",
+    version: "0.5.0-browser",
     platform: navigator.platform,
     arch: "browser",
     dataDirectory: "浏览器预览模式",
@@ -82,6 +83,13 @@ export async function chooseImportFile(): Promise<ImportFileResult | null> {
     };
     input.click();
   });
+}
+
+export async function scanWechatCalls(): Promise<WechatScanResult> {
+  if (!isTauriRuntime()) {
+    throw new Error("自动扫描仅在 Windows 桌面版中可用。");
+  }
+  return invoke<WechatScanResult>("scan_wechat_calls");
 }
 
 export async function exportJson(

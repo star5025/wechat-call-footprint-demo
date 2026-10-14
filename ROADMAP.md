@@ -12,35 +12,34 @@
 - [x] Local-first 架构 ADR；
 - [x] 测试与统计金标准。
 
-## 下一里程碑：M1 正式前端骨架
+## 已完成：M1 正式桌面工程
 
-- [ ] 初始化 Tauri 2 + React + TypeScript；
-- [ ] 将 v0.3 拆分为页面和公共组件；
-- [ ] 提取设计 Token；
-- [ ] 实现 `DemoCallDataSource`；
-- [ ] 使用 v1 契约替换页面内硬编码对象；
-- [ ] 完成 Loading、Empty、Partial、Missing 和 Error 状态；
-- [ ] 生成第一份 Windows 开发版 EXE；
-- [ ] 保持 UI 视觉与 v0.3 一致。
+- [x] Tauri 2 + React + TypeScript；
+- [x] 页面、公共组件、设计 Token 和 Demo 数据源；
+- [x] 使用 v1 契约替换页面内硬编码对象；
+- [x] Loading、Empty、Partial、Missing 和 Error 状态；
+- [x] Windows 便携 EXE 与 NSIS 安装包；
+- [x] 保持 UI 视觉与 v0.3 一致。
 
-## M2 真实数据库最小闭环
+## 已完成：M2 Windows 真实数据库闭环
 
-- [ ] 用户选择已解密数据库；
-- [ ] Rust 只读打开与 Schema 探测；
-- [ ] 解析联系人和 CallEvent；
-- [ ] 记录页显示真实事件；
-- [ ] 时光墙显示真实 ContributionDay；
-- [ ] 与 22/16/44,352 秒金标准一致；
-- [ ] 错误、取消和临时清理测试通过。
+- [x] Windows 微信 4.1.15.13 严格版本适配；
+- [x] 安装、进程、账号、自定义数据目录和消息分片自动发现；
+- [x] 原库只读快照、逐页 HMAC、WAL checksum 与提交边界验证；
+- [x] 进程内密钥候选恢复和数据库 HMAC 验证；
+- [x] 联系人、Name2Id、VoIP payload 和 CallEvent 解析；
+- [x] 记录页、时光墙和统计使用真实事件；
+- [x] 本机真实数据 Release 链路验证；
+- [x] 扫描互斥、资源预算、密钥清零与临时清理。
 
-## M3 隔离与自动采集
+## 下一里程碑：M3 隔离、任务化与增量采集
 
-- [ ] Acquisition Worker；
-- [ ] SQLite/WAL 一致快照；
-- [ ] 多分片与精确去重；
+- [ ] 独立 Acquisition Worker；
+- [ ] Contract v1 `scan_start/status/cancel/progress` 完整任务接口；
+- [ ] 跨分片多来源合并与精确去重；
 - [ ] 增量扫描；
-- [ ] Windows 自动发现；
-- [ ] 自动密钥能力独立安全与法律评审；
+- [ ] 更多 Windows 微信 build 的独立适配器；
+- [ ] 自动密钥能力独立法律评审；
 - [ ] Defender/SmartScreen 兼容测试。
 
 ## M4 产品完善
