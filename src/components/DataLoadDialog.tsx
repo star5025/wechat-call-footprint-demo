@@ -84,7 +84,7 @@ export function DataLoadDialog() {
     return (
       <div className="modal-backdrop data-process-backdrop" role="alert" aria-live="assertive">
         <section className="data-loading-dialog simple-loading-dialog" aria-labelledby="data-loading-title">
-          <span className="simple-loading-icon" aria-hidden="true">⌁</span>
+          <span className="simple-loading-icon" aria-hidden="true">⏳</span>
           <h2 id="data-loading-title">{dataLoading.title}</h2>
           <p>{dataLoading.detail}</p>
           <div className="actual-progress-label"><span>处理进度</span><strong>{Math.round(displayedProgress)}%</strong></div>
@@ -106,7 +106,7 @@ export function DataLoadDialog() {
   return (
     <div className="modal-backdrop data-process-backdrop" role="presentation">
       <section className="contact-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="load-success-title">
-        <div className="success-mark" aria-hidden="true">✓</div>
+        <div className="success-mark" aria-hidden="true">✅</div>
         <h2 id="load-success-title">{dataLoadSuccess!.title}</h2>
         <p className="dialog-subtitle">{dataLoadSuccess!.description}</p>
         <div className="load-success-stats">
@@ -120,7 +120,7 @@ export function DataLoadDialog() {
               <div><strong>选择联系人</strong><small>选择后查看对应通话统计</small></div>
               {dataset.contacts.length > 6 && (
                 <label className="contact-choice-search">
-                  <span>⌕</span>
+                  <span>🔍</span>
                   <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索联系人" autoFocus />
                 </label>
               )}

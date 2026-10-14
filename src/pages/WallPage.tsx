@@ -79,7 +79,7 @@ export function WallPage() {
   return (
     <section className="view active">
       <header className="wall-header">
-        <div className="wall-title"><span className="page-orb orb-wall">▦</span><div><h1>通话日历</h1></div></div>
+        <div className="wall-title"><span className="page-orb orb-wall">📅</span><div><h1>通话日历</h1></div></div>
         <div className="range-switch">{(["year","month","custom"] as WallMode[]).map((value) => <button key={value} className={mode === value ? "active" : ""} onClick={() => setMode(value)}>{value === "year" ? "一年" : value === "month" ? "一个月" : "自定义"}</button>)}</div>
       </header>
 
@@ -92,10 +92,10 @@ export function WallPage() {
       </section>
 
       <section className="wall-summary">
-        <article className="wall-stat"><b>☀</b><small>有记录的日期</small><strong>{summary.activeDayCount} 天</strong><span>{completeDays} 天有完整覆盖</span></article>
-        <article className="wall-stat"><b>◷</b><small>通话记录</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通</span></article>
-        <article className="wall-stat"><b>〰</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>按接通时长累计</span></article>
-        <article className="wall-stat"><b>✦</b><small>接通时长最长日期</small><strong>{bestDay?.callCount ? formatDate(bestDay.date) : "还没有"}</strong><span>{bestDay?.callCount ? formatDuration(bestDay.durationSeconds) : "暂无通话记录"}</span></article>
+        <article className="wall-stat"><b>📅</b><small>有记录的日期</small><strong>{summary.activeDayCount} 天</strong><span>{completeDays} 天有完整覆盖</span></article>
+        <article className="wall-stat"><b>📞</b><small>通话记录</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通</span></article>
+        <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>按接通时长累计</span></article>
+        <article className="wall-stat"><b>🏆</b><small>接通时长最长日期</small><strong>{bestDay?.callCount ? formatDate(bestDay.date) : "还没有"}</strong><span>{bestDay?.callCount ? formatDuration(bestDay.durationSeconds) : "暂无通话记录"}</span></article>
       </section>
 
       <section className={`contribution-card mode-${mode}`}>
@@ -116,7 +116,7 @@ export function WallPage() {
         </div>
       )}
 
-      {selectedDate && selectedEvents.length > 0 && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>这一天有 {selectedEvents.length} 条记录</h2><p>共计 {formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}</p></div><div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "▻" : "◖"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div></section>}
+      {selectedDate && selectedEvents.length > 0 && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>这一天有 {selectedEvents.length} 条记录</h2><p>共计 {formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}</p></div><div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "📹" : "🎙️"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div></section>}
 
     </section>
   );

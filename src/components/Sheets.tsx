@@ -128,21 +128,21 @@ export function Sheets() {
         <header><div><h2>设置</h2></div><button onClick={() => setSettingsOpen(false)}>×</button></header>
         <div className="setting-list">
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
-            <span className="setting-icon mint">{wechatScanning ? "···" : "⌁"}</span><span><strong>{wechatScanning ? "正在读取微信记录" : "扫描本机微信"}</strong><small>{wechatScanning ? "请保持微信登录" : "只读访问微信文件和进程内存"}</small></span><i>{wechatScanning ? "请稍候" : "›"}</i>
+            <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "正在读取微信记录" : "扫描本机微信"}</strong><small>{wechatScanning ? "请保持微信登录" : "只读访问微信文件和进程内存"}</small></span><i>{wechatScanning ? "请稍候" : "›"}</i>
           </button>
           <button className="setting-item" disabled={wechatScanning} onClick={() => void chooseImport()}>
-            <span className="setting-icon lavender">⇩</span><span><strong>导入通话数据</strong><small>自动扫描不可用时选择 v1 JSON</small></span><i>›</i>
+            <span className="setting-icon lavender">📥</span><span><strong>导入通话数据</strong><small>自动扫描不可用时选择 v1 JSON</small></span><i>›</i>
           </button>
           <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData()}>
-            <span className="setting-icon peach">⇧</span><span><strong>完整数据导出</strong><small>可重新导入，包含联系人名称</small></span><i>›</i>
+            <span className="setting-icon peach">📤</span><span><strong>完整数据导出</strong><small>可重新导入，包含联系人名称</small></span><i>›</i>
           </button>
           {dataMode === "imported" && (
             <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => setDeleteConfirmOpen(true)}>
-              <span className="setting-icon danger-icon">×</span><span><strong>删除本地通话数据</strong><small>不会修改或删除微信原始文件</small></span><i>›</i>
+              <span className="setting-icon danger-icon">🗑️</span><span><strong>删除本地通话数据</strong><small>不会修改或删除微信原始文件</small></span><i>›</i>
             </button>
           )}
         </div>
-        <div className="local-note"><span>✓</span><p><strong>本地数据</strong><br />当前数据：{dataMode === "empty" ? "尚未连接" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
+        <div className="local-note"><span>📁</span><p><strong>本地数据</strong><br />当前数据：{dataMode === "empty" ? "尚未连接" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
       </aside>
 
       {deleteConfirmOpen && (
@@ -156,10 +156,10 @@ export function Sheets() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button className="modal-close" disabled={deleting} aria-label="取消删除" onClick={() => setDeleteConfirmOpen(false)}>×</button>
-            <span className="delete-confirm-orb" aria-hidden="true">×</span>
+            <span className="delete-confirm-orb" aria-hidden="true">🗑️</span>
             <h2 id="delete-confirm-title">确认删除本地通话数据？</h2>
             <p id="delete-confirm-description">删除后，应用中的联系人和通话统计将被清空。</p>
-            <div className="delete-confirm-note"><span>✓</span><p>不会修改或删除微信原始文件。之后可以重新扫描或导入数据。</p></div>
+            <div className="delete-confirm-note"><span>🔒</span><p>不会修改或删除微信原始文件。之后可以重新扫描或导入数据。</p></div>
             <div className="dialog-buttons delete-confirm-actions">
               <button className="secondary-action" disabled={deleting} onClick={() => setDeleteConfirmOpen(false)}>取消</button>
               <button className="danger-action" disabled={deleting} onClick={() => void confirmDelete()}>{deleting ? "正在删除…" : "确认删除"}</button>

@@ -30,9 +30,7 @@ export default function App() {
           }
         }}
       >
-        <div className="launch-mark" aria-hidden="true">
-          <i /><i /><i />
-        </div>
+        <div className="launch-mark" aria-hidden="true">📞</div>
         <h1>通话足迹</h1>
         <p>本地通话记录统计</p>
       </div>

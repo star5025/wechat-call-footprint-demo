@@ -11,7 +11,7 @@ export function ImportDialog() {
         <button className="modal-close" onClick={cancelImport}>×</button>
         {importPreview ? (
           <>
-            <span className="dialog-orb">⇩</span>
+            <span className="dialog-orb">📥</span>
             <h2 id="import-title">确认导入</h2>
             <p className="dialog-subtitle">确认文件信息后保存到本地数据目录。</p>
             <div className="import-file-name">{importPreview.fileName}</div>
@@ -27,7 +27,7 @@ export function ImportDialog() {
             {importPreview.warnings.length > 0 && (
               <div className="import-warning">{importPreview.warnings.slice(0, 3).map((warning) => <p key={warning}>• {warning}</p>)}</div>
             )}
-            <div className="dialog-assurance"><span>✓</span><p>不会读取聊天正文，也不会修改原文件。导入数据可以随时删除。</p></div>
+            <div className="dialog-assurance"><span>🔒</span><p>不会读取聊天正文，也不会修改原文件。导入数据可以随时删除。</p></div>
             <div className="dialog-buttons">
               <button className="secondary-action" onClick={cancelImport}>取消</button>
               <button className="primary-action" onClick={() => void confirmImport()}>确认导入</button>
@@ -35,7 +35,7 @@ export function ImportDialog() {
           </>
         ) : (
           <>
-            <span className="dialog-orb error-orb">!</span>
+            <span className="dialog-orb error-orb">⚠️</span>
             <h2 id="import-title">文件无法导入</h2>
             <div className="import-errors">{importErrors.map((error) => <p key={error}>{error}</p>)}</div>
             <div className="dialog-buttons">

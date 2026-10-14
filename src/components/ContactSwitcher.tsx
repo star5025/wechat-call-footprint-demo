@@ -36,7 +36,7 @@ export function ContactSwitcher() {
                 <strong>{item.displayName}</strong>
                 <small>{item.needsReview ? "身份需要确认" : "已识别联系人"}</small>
               </span>
-              {item.id === activeContactId && <b>✓</b>}
+              {item.id === activeContactId && <b>✅</b>}
             </button>
           ))}
         </div>

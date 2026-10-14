@@ -15,12 +15,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className={`app ${settings.reducedMotion ? "reduced-motion" : ""}`}>
         <header className="topbar">
           <button className="brand" onClick={() => navigate("home")} aria-label="回到首页">
-            <span className="brand-logo"><i /><i /><i /></span><strong>通话足迹</strong>
+            <span className="brand-logo" aria-hidden="true">📞</span><strong>通话足迹</strong>
           </button>
           <Navigation />
           <div className="top-actions">
             <span className={`demo-tag ${dataMode === "imported" ? "imported-tag" : ""}`}>{dataMode === "empty" ? "开始使用" : "本地数据"}</span>
-            <button className="round-btn" title="设置" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙</button>
+            <button className="round-btn" title="设置" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
           </div>
         </header>
         <main>{children}</main>
@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <DataLoadDialog />
       <ScanConsentDialog />
       <div className="toast-zone" aria-live="polite">
-        {toasts.map((toast) => <div className="toast" key={toast.id}><span>✦</span>{toast.text}</div>)}
+        {toasts.map((toast) => <div className="toast" key={toast.id}><span>✅</span>{toast.text}</div>)}
       </div>
     </>
   );
