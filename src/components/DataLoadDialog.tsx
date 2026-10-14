@@ -16,10 +16,17 @@ export function DataLoadDialog() {
   const [search, setSearch] = useState("");
   const [displayedProgress, setDisplayedProgress] = useState(0);
   const displayedProgressRef = useRef(0);
+  const reportedProgressRef = useRef(0);
 
   useEffect(() => {
     if (dataLoadSuccess) setSearch("");
   }, [dataLoadSuccess]);
+
+  useEffect(() => {
+    reportedProgressRef.current = dataLoading
+      ? Math.max(0, Math.min(100, dataLoading.progress))
+      : 0;
+  }, [dataLoading]);
 
   useEffect(() => {
     if (!dataLoading) {
@@ -28,28 +35,32 @@ export function DataLoadDialog() {
       return;
     }
 
-    const target = Math.max(0, Math.min(100, dataLoading.progress));
-    const startValue = displayedProgressRef.current;
-    if (target <= startValue) {
-      displayedProgressRef.current = target;
-      setDisplayedProgress(target);
-      return;
-    }
-
-    const startedAt = performance.now();
-    const duration = Math.min(650, Math.max(280, (target - startValue) * 14));
     let frame = 0;
+    let previousTime = performance.now();
     const animate = (now: number) => {
-      const elapsed = Math.min(1, (now - startedAt) / duration);
-      const eased = 1 - Math.pow(1 - elapsed, 3);
-      const next = Math.min(target, startValue + (target - startValue) * eased);
-      displayedProgressRef.current = next;
-      setDisplayedProgress(next);
-      if (elapsed < 1) frame = window.requestAnimationFrame(animate);
+      const deltaSeconds = Math.min(0.1, (now - previousTime) / 1000);
+      previousTime = now;
+      const current = displayedProgressRef.current;
+      const reported = reportedProgressRef.current;
+      const headroom = reported < 25 ? 14 : reported < 70 ? 10 : 5;
+      const ceiling = reported >= 100 ? 100 : Math.min(96, reported + headroom);
+      const speed = reported >= 100
+        ? Math.max(30, (100 - current) * 5)
+        : current < reported
+          ? Math.max(18, (reported - current) * 3.5)
+          : 0.9;
+      const next = Math.min(ceiling, current + speed * deltaSeconds);
+
+      if (next !== current) {
+        displayedProgressRef.current = next;
+        setDisplayedProgress(next);
+      }
+      frame = window.requestAnimationFrame(animate);
     };
+
     frame = window.requestAnimationFrame(animate);
     return () => window.cancelAnimationFrame(frame);
-  }, [dataLoading]);
+  }, [Boolean(dataLoading)]);
 
   const callCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -86,7 +97,7 @@ export function DataLoadDialog() {
           >
             <i style={{ width: `${displayedProgress}%` }} />
           </div>
-          <small>进度来自本机实际处理阶段，请不要关闭应用</small>
+          <small>根据当前处理阶段平滑估算，请不要关闭应用</small>
         </section>
       </div>
     );
