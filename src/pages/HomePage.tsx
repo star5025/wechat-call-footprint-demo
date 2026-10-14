@@ -3,7 +3,14 @@ import { ContactSwitcher } from "@/components/ContactSwitcher";
 import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildInsights, buildWall, filterEvents, summarize } from "@/data/analytics";
 import { useApp } from "@/state/AppContext";
-import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel } from "@/utils/format";
+import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel, pad } from "@/utils/format";
+
+const formatChartDuration = (seconds: number) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remaining = seconds % 60;
+  return hours ? `${hours}:${pad(minutes)}:${pad(remaining)}` : `${minutes}:${pad(remaining)}`;
+};
 
 export function HomePage() {
   const { dataset, activeContactId, navigate, openEvent, settings, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
@@ -63,7 +70,7 @@ export function HomePage() {
 
           <section className="soft-panel rhythm-panel">
             <div className="section-heading"><div><span className="section-emoji">〰</span><div><h2>近期接通统计</h2></div></div><div className="soft-tabs"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>次数</button></div></div>
-            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatDuration(day.durationSeconds) : `${day.connectedCount} 次`; return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metricValue}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip"><strong>{formatDate(day.date)}</strong><small>{metricValue}</small></span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
+            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatChartDuration(day.durationSeconds) : String(day.connectedCount); return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metric === "duration" ? `接通时长 ${metricValue}` : `通话 ${metricValue} 次`}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip">{metricValue}</span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
           </section>
 
           <section className="bottom-row">
