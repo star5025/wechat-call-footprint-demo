@@ -16,8 +16,30 @@ describe("call analytics gold standard", () => {
     expect(summary.longestDurationSeconds).toBe(8_249);
   });
 
-  it("returns a dense contribution wall", () => {
-    const result = buildWall(TEST_DATASET, contactId, {
+  it("summarizes year, month, and custom calendar ranges", () => {
+    const year = summarize(filterEvents(TEST_DATASET, contactId, "2026-01-01", "2026-12-31"));
+    const month = summarize(filterEvents(TEST_DATASET, contactId, "2026-10-01", "2026-10-31"));
+    const custom = summarize(filterEvents(TEST_DATASET, contactId, "2026-10-05", "2026-10-07"));
+
+    expect(year.attemptedCount).toBe(22);
+    expect(year.totalDurationSeconds).toBe(44_352);
+    expect(year.activeDayCount).toBe(7);
+    expect(year.longestDurationSeconds).toBe(8_249);
+
+    expect(month.attemptedCount).toBe(6);
+    expect(month.totalDurationSeconds).toBe(17_915);
+    expect(month.activeDayCount).toBe(3);
+    expect(month.longestDurationSeconds).toBe(8_249);
+
+    expect(custom).toMatchObject({
+      attemptedCount: 6,
+      totalDurationSeconds: 17_915,
+      activeDayCount: 3,
+      longestDurationSeconds: 8_249
+    });
+  });
+
+  it("returns a dense contribution wall", () => {    const result = buildWall(TEST_DATASET, contactId, {
       startDate: "2026-09-22",
       endDate: "2026-10-07",
       timezone: "Asia/Shanghai"

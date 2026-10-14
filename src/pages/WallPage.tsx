@@ -53,9 +53,9 @@ export function WallPage() {
       previousMonth = currentMonth;
     }
   });
-  const completeDays = wall.days.filter((day) => day.coverage === "complete").length;
-  const bestDay = wall.days.reduce<ContributionDay | null>((winner, day) => !winner || day.durationSeconds > winner.durationSeconds ? day : winner, null);
+  const longestEvent = rangeEvents.find((event) => event.id === summary.longestEventId) ?? null;
   const title = mode === "year" ? `${year} 年` : mode === "month" ? `${Number(month.slice(0,4))} 年 ${Number(month.slice(5))} 月` : `${formatDate(start)} — ${formatDate(end)}`;
+  const rangeDayCount = wall.days.length;
 
   const changeMonth = (delta: number) => {
     const [y, m] = month.split("-").map(Number);
@@ -91,11 +91,11 @@ export function WallPage() {
         <ContactSwitcher />
       </section>
 
-      <section className="wall-summary">
-        <article className="wall-stat"><b>📅</b><small>有记录的日期</small><strong>{summary.activeDayCount} 天</strong><span>{completeDays} 天有完整覆盖</span></article>
-        <article className="wall-stat"><b>📞</b><small>通话记录</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通</span></article>
-        <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>按接通时长累计</span></article>
-        <article className="wall-stat"><b>🏆</b><small>接通时长最长日期</small><strong>{bestDay?.callCount ? formatDate(bestDay.date) : "还没有"}</strong><span>{bestDay?.callCount ? formatDuration(bestDay.durationSeconds) : "暂无通话记录"}</span></article>
+      <section className="wall-summary" aria-label={`${title}通话统计`}>
+        <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>{summary.connectedCount} 次接通 · {title}</span></article>
+        <article className="wall-stat"><b>📞</b><small>通话次数</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通 · {summary.missedOrCancelledCount} 次未接通</span></article>
+        <article className="wall-stat"><b>📅</b><small>有记录日期</small><strong>{summary.activeDayCount} 天</strong><span>所选范围共 {rangeDayCount} 天</span></article>
+        <article className="wall-stat"><b>🏆</b><small>最长通话时长</small><strong>{summary.longestDurationSeconds ? formatDuration(summary.longestDurationSeconds) : "暂无"}</strong><span>{longestEvent?.startedAt ? formatDate(longestEvent.startedAt.slice(0, 10)) : "所选范围内暂无接通记录"}</span></article>
       </section>
 
       <section className={`contribution-card mode-${mode}`}>
