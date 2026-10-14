@@ -108,7 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ]);
         const nextSettings = { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
         setSettings(nextSettings);
-        setRoute(nextSettings.lastRoute);
+        setRoute(storedDataset ? nextSettings.lastRoute : "home");
         setAppInfo(info);
         if (storedDataset) {
           setDataset(storedDataset);
@@ -140,10 +140,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [notify]);
 
   const navigate = useCallback((nextRoute: AppRoute) => {
+    if (nextRoute !== "home" && dataset.events.length === 0) {
+      notify("请先导入通话记录后使用此功能");
+      return;
+    }
     setRoute(nextRoute);
     void persistSettings({ ...settings, lastRoute: nextRoute });
     window.scrollTo({ top: 0, behavior: settings.reducedMotion ? "auto" : "smooth" });
-  }, [persistSettings, settings]);
+  }, [dataset.events.length, notify, persistSettings, settings]);
 
   const selectContact = useCallback((contactId: string | null) => {
     setActiveContactId(contactId);
