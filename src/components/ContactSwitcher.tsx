@@ -17,7 +17,7 @@ export function ContactSwitcher() {
   }, []);
 
   if (!contact) return null;
-  const displayName = settings.privacyMode ? "重要的人" : contact.displayName;
+  const displayName = settings.privacyMode ? "联系人" : contact.displayName;
   return (
     <div className="contact-switch-wrap" ref={root}>
       <button className="contact-switch" onClick={() => setOpen((value) => !value)}>
@@ -34,7 +34,7 @@ export function ContactSwitcher() {
             <button key={item.id} onClick={() => { selectContact(item.id); setOpen(false); }}>
               <ContactAvatar contact={item} privacyMode={settings.privacyMode} className="mini-avatar" />
               <span>
-                <strong>{settings.privacyMode ? "重要的人" : item.displayName}</strong>
+                <strong>{settings.privacyMode ? "联系人" : item.displayName}</strong>
                 <small>{item.needsReview ? "身份需要确认" : "已识别联系人"}</small>
               </span>
               {item.id === activeContactId && <b>✓</b>}

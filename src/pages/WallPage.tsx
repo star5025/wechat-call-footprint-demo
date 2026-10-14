@@ -71,7 +71,7 @@ export function WallPage() {
   return (
     <section className="view active">
       <header className="wall-header">
-        <div className="wall-title"><span className="page-orb orb-wall">▦</span><div><span className="date-line">你们的通话日历</span><h1>时光墙</h1><p>每个小格子，都是一天留下的声音。</p></div></div>
+        <div className="wall-title"><span className="page-orb orb-wall">▦</span><div><h1>通话日历</h1></div></div>
         <div className="range-switch">{(["year","month","custom"] as WallMode[]).map((value) => <button key={value} className={mode === value ? "active" : ""} onClick={() => setMode(value)}>{value === "year" ? "一年" : value === "month" ? "一个月" : "自定义"}</button>)}</div>
       </header>
 
@@ -84,16 +84,16 @@ export function WallPage() {
       </section>
 
       <section className="wall-summary">
-        <article className="wall-stat"><b>☀</b><small>有声音的日子</small><strong>{summary.activeDayCount} 天</strong><span>{completeDays} 天有完整覆盖</span></article>
-        <article className="wall-stat"><b>◷</b><small>留下的通话</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通</span></article>
-        <article className="wall-stat"><b>〰</b><small>通话总时光</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>按接通时长累计</span></article>
-        <article className="wall-stat"><b>✦</b><small>最亮的一天</small><strong>{bestDay?.callCount ? formatDate(bestDay.date) : "还没有"}</strong><span>{bestDay?.callCount ? formatDuration(bestDay.durationSeconds) : "暂无通话记录"}</span></article>
+        <article className="wall-stat"><b>☀</b><small>有记录的日期</small><strong>{summary.activeDayCount} 天</strong><span>{completeDays} 天有完整覆盖</span></article>
+        <article className="wall-stat"><b>◷</b><small>通话记录</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通</span></article>
+        <article className="wall-stat"><b>〰</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>按接通时长累计</span></article>
+        <article className="wall-stat"><b>✦</b><small>接通时长最长日期</small><strong>{bestDay?.callCount ? formatDate(bestDay.date) : "还没有"}</strong><span>{bestDay?.callCount ? formatDuration(bestDay.durationSeconds) : "暂无通话记录"}</span></article>
       </section>
 
       <section className={`contribution-card mode-${mode}`}>
-        <div className="contribution-topline"><div><h2>{title}</h2><p>{wall.quality.overallState === "partial" ? "虚线格表示该日期没有可读取的数据覆盖" : "颜色越深，这一天聊得越久"}</p></div><div className="wall-legend"><span>少</span>{[0,1,2,3,4].map((level) => <i key={level} data-level={level} />)}<span>多</span></div></div>
+        <div className="contribution-topline"><div><h2>{title}</h2><p>{wall.quality.overallState === "partial" ? "虚线格表示该日期没有可读取的数据覆盖" : "颜色深度表示当日接通时长"}</p></div><div className="wall-legend"><span>少</span>{[0,1,2,3,4].map((level) => <i key={level} data-level={level} />)}<span>多</span></div></div>
         <div className="wall-scroll"><div className="wall-months" style={{ gridTemplateColumns: `repeat(${Math.ceil((lead + wall.days.length) / 7)}, var(--wall-cell, 14px))` }}>{monthStarts.map((item) => <span className="wall-month-label" key={item.date} style={{ gridColumn: `${item.column}/span 3` }}>{Number(item.date.slice(5,7))}月</span>)}</div><div className="wall-grid-wrap"><div className="wall-weekdays"><span>一</span><span /><span>三</span><span /><span>五</span><span /><span>日</span></div><div className="contribution-grid">{Array.from({ length: lead }, (_, index) => <span className="wall-cell blank" key={`blank-${index}`} />)}{wall.days.map((day) => <button key={day.date} className={`wall-cell ${day.coverage}`} data-level={contributionLevel(day, metric, max)} aria-label={`${formatDate(day.date)}，${day.callCount} 条通话记录，共 ${formatDuration(day.durationSeconds)}`} onMouseEnter={(event) => showDayTooltip(day, event.currentTarget)} onMouseLeave={() => setHoveredDay(null)} onFocus={(event) => showDayTooltip(day, event.currentTarget)} onBlur={() => setHoveredDay(null)} onClick={() => setSelectedDate(day.date)} />)}</div></div></div>
-        <div className="wall-footnote"><span><b /> 有通话记录</span><span>轻点任意一天查看详情</span><span className={wall.quality.overallState === "partial" ? "quality-pill warning" : "quality-pill"}>{wall.quality.overallState === "partial" ? "部分数据" : "数据完整"}</span></div>
+        <div className="wall-footnote"><span><b /> 有通话记录</span><span>点击日期查看详情</span><span className={wall.quality.overallState === "partial" ? "quality-pill warning" : "quality-pill"}>{wall.quality.overallState === "partial" ? "部分数据" : "数据完整"}</span></div>
       </section>
 
       {hoveredDay && (
@@ -108,7 +108,7 @@ export function WallPage() {
         </div>
       )}
 
-      {selectedDate && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>{selectedEvents.length ? `这一天有 ${selectedEvents.length} 条记录` : "安静的一天"}</h2><p>{selectedEvents.length ? `共计 ${formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}` : wall.days.find((day) => day.date === selectedDate)?.coverage === "complete" ? "当天有完整数据覆盖，但没有发现通话记录。" : "当天没有可读取的数据覆盖，不能判断是否有通话。"}</p></div>{selectedEvents.length > 0 && <div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "▻" : "◖"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div>}</section>}
+      {selectedDate && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>{selectedEvents.length ? `这一天有 ${selectedEvents.length} 条记录` : "无通话记录"}</h2><p>{selectedEvents.length ? `共计 ${formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}` : wall.days.find((day) => day.date === selectedDate)?.coverage === "complete" ? "当天有完整数据覆盖，但没有发现通话记录。" : "当天没有可读取的数据覆盖，不能判断是否有通话。"}</p></div>{selectedEvents.length > 0 && <div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "▻" : "◖"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div>}</section>}
 
     </section>
   );

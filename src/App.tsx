@@ -34,7 +34,7 @@ export default function App() {
           <i /><i /><i />
         </div>
         <h1>通话足迹</h1>
-        <p>珍藏每一次声音相伴</p>
+        <p>本地通话记录统计</p>
       </div>
     );
   }

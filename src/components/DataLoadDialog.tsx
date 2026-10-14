@@ -73,7 +73,7 @@ export function DataLoadDialog() {
         {dataset.contacts.length > 0 ? (
           <>
             <div className="contact-choice-heading">
-              <div><strong>选择要查看的联系人</strong><small>选择后进入对方的通话足迹</small></div>
+              <div><strong>选择联系人</strong><small>选择后查看对应通话统计</small></div>
               {dataset.contacts.length > 6 && (
                 <label className="contact-choice-search">
                   <span>⌕</span>

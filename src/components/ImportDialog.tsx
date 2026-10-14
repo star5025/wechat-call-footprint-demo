@@ -12,8 +12,8 @@ export function ImportDialog() {
         {importPreview ? (
           <>
             <span className="dialog-orb">⇩</span>
-            <h2 id="import-title">准备导入这份记录</h2>
-            <p className="dialog-subtitle">先确认内容，再保存到应用的本地数据目录。</p>
+            <h2 id="import-title">确认导入</h2>
+            <p className="dialog-subtitle">确认文件信息后保存到本地数据目录。</p>
             <div className="import-file-name">{importPreview.fileName}</div>
             <div className="import-stats">
               <div><small>联系人</small><strong>{importPreview.contactCount}</strong></div>
@@ -36,7 +36,7 @@ export function ImportDialog() {
         ) : (
           <>
             <span className="dialog-orb error-orb">!</span>
-            <h2 id="import-title">这份文件暂时不能导入</h2>
+            <h2 id="import-title">文件无法导入</h2>
             <div className="import-errors">{importErrors.map((error) => <p key={error}>{error}</p>)}</div>
             <div className="dialog-buttons">
               <button className="secondary-action" onClick={cancelImport}>关闭</button>

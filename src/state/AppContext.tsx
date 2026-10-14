@@ -224,7 +224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await finishDataLoad(
         validation.dataset,
         "微信记录加载成功",
-        "通话记录已经整理完成，请选择一位联系人开始查看。",
+        "加载完成。请选择要查看的联系人。",
         result.summary.warnings
       );
       notify(`加载成功：${result.summary.callEvents} 条通话记录`);
@@ -285,7 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await finishDataLoad(
         preview.dataset,
         "数据导入成功",
-        "数据已经安全保存在本机，请选择一位联系人开始查看。",
+        "数据已保存到本机。请选择要查看的联系人。",
         preview.warnings
       );
       notify(`加载成功：${preview.eventCount} 条通话记录`);
