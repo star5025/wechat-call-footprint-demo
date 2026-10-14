@@ -93,11 +93,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const promptedEmptyRoutes = useRef(new Set<AppRoute>());
+  const activeToastTexts = useRef(new Set<string>());
 
   const notify = useCallback((text: string) => {
+    if (activeToastTexts.current.has(text)) return;
+    activeToastTexts.current.add(text);
     const id = ++toastId;
     setToasts((items) => [...items, { id, text }]);
-    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 2800);
+    window.setTimeout(() => {
+      activeToastTexts.current.delete(text);
+      setToasts((items) => items.filter((item) => item.id !== id));
+    }, 3200);
   }, []);
 
   useEffect(() => {
@@ -113,8 +119,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           getAppInfo()
         ]);
         const nextSettings = { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
-        setSettings(nextSettings);
-        setRoute(nextSettings.lastRoute);
+        setSettings({ ...nextSettings, lastRoute: "home" });
+        setRoute("home");
         setAppInfo(info);
         if (storedDataset) {
           setDataset(storedDataset);
