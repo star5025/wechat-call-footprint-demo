@@ -13,8 +13,8 @@ export function HomePage() {
   const recentStart = events.at(-1)?.startedAt?.slice(0, 10) ?? "2026-01-01";
   const recentEnd = events[0]?.startedAt?.slice(0, 10) ?? recentStart;
   const wall = useMemo(() => buildWall(dataset, activeContactId, { startDate: recentStart, endDate: recentEnd, timezone: dataset.timezone }), [dataset, activeContactId, recentStart, recentEnd]);
-  const activeDays = wall.days.filter((day) => day.callCount > 0);
-  const max = Math.max(1, ...activeDays.map((day) => metric === "duration" ? day.durationSeconds : day.callCount));
+  const activeDays = wall.days.filter((day) => day.connectedCount > 0);
+  const max = Math.max(1, ...activeDays.map((day) => metric === "duration" ? day.durationSeconds : day.connectedCount));
   const insights = buildInsights(events);
   const longest = events.find((event) => event.id === summary.longestEventId) ?? null;
   const latest = events[0] ?? null;
@@ -63,7 +63,7 @@ export function HomePage() {
 
           <section className="soft-panel rhythm-panel">
             <div className="section-heading"><div><span className="section-emoji">〰</span><div><h2>最近的通话时光</h2><p>每根柱子，都是一天的声音</p></div></div><div className="soft-tabs"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>次数</button></div></div>
-            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.callCount; return <button className="soft-column" key={day.date} title={`${formatDate(day.date)} · ${day.callCount} 次 · ${formatDuration(day.durationSeconds)}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }} /></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
+            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，已接通 ${day.connectedCount} 次，${formatDuration(day.durationSeconds)}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }} /></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
             <div className="chart-pop">轻点柱子进入时光墙</div>
           </section>
 
