@@ -17,13 +17,27 @@ import type {
   ImportPreview
 } from "@/domain";
 import { DEFAULT_SETTINGS } from "@/domain";
-import { DEMO_DATASET } from "@/data/demoDataset";
+import { createEmptyDataset } from "@/data/emptyDataset";
 import { chooseImportFile, deleteDataset, getAppInfo, loadDataset, loadSettings, saveDataset, saveSettings, scanWechatCalls } from "@/native/bridge";
 import { makeImportPreview, parseDataset, validateDataset } from "@/data/dataset";
 
 interface ToastMessage {
   id: number;
   text: string;
+}
+
+export interface DataLoadingState {
+  title: string;
+  detail: string;
+  progress: number;
+}
+
+export interface DataLoadSuccess {
+  title: string;
+  description: string;
+  eventCount: number;
+  contactCount: number;
+  warnings: string[];
 }
 
 interface AppContextValue {
@@ -39,6 +53,8 @@ interface AppContextValue {
   importErrors: string[];
   settingsOpen: boolean;
   wechatScanning: boolean;
+  dataLoading: DataLoadingState | null;
+  dataLoadSuccess: DataLoadSuccess | null;
   toasts: ToastMessage[];
   navigate: (route: AppRoute) => void;
   selectContact: (contactId: string | null) => void;
@@ -50,7 +66,9 @@ interface AppContextValue {
   scanWechat: () => Promise<void>;
   confirmImport: () => Promise<void>;
   cancelImport: () => void;
-  restoreDemo: () => Promise<void>;
+  selectLoadedContact: (contactId: string) => Promise<void>;
+  finishWithoutContact: () => void;
+  clearDataset: () => Promise<void>;
   notify: (text: string) => void;
 }
 
@@ -59,8 +77,8 @@ let toastId = 0;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [dataset, setDataset] = useState<AppDataset>(DEMO_DATASET);
-  const [dataMode, setDataMode] = useState<DataMode>("demo");
+  const [dataset, setDataset] = useState<AppDataset>(() => createEmptyDataset());
+  const [dataMode, setDataMode] = useState<DataMode>("empty");
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [route, setRoute] = useState<AppRoute>("home");
@@ -68,6 +86,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedEvent, setSelectedEvent] = useState<CallEvent | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wechatScanning, setWechatScanning] = useState(false);
+  const [dataLoading, setDataLoading] = useState<DataLoadingState | null>(null);
+  const [dataLoadSuccess, setDataLoadSuccess] = useState<DataLoadSuccess | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -95,10 +115,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataMode("imported");
           setActiveContactId(nextSettings.lastContactId ?? storedDataset.contacts[0]?.id ?? null);
         } else {
-          setActiveContactId(DEMO_DATASET.contacts[0]?.id ?? null);
+          setDataset(createEmptyDataset());
+          setDataMode("empty");
+          setActiveContactId(null);
         }
       } catch (error) {
-        notify(`无法恢复本地状态，已使用示例数据：${String(error)}`);
+        setDataset(createEmptyDataset());
+        setDataMode("empty");
+        setActiveContactId(null);
+        notify(`无法恢复本地状态：${String(error)}`);
       } finally {
         setReady(true);
       }
@@ -129,45 +154,112 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await persistSettings({ ...settings, ...patch });
   }, [persistSettings, settings]);
 
+  const finishDataLoad = useCallback(async (
+    nextDataset: AppDataset,
+    title: string,
+    description: string,
+    warnings: string[] = []
+  ) => {
+    await saveDataset(nextDataset);
+    setDataLoading((current) => current ? {
+      title: "加载完成",
+      detail: "数据已完成验证并保存到本机",
+      progress: 100
+    } : current);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    setDataset(nextDataset);
+    setDataMode("imported");
+    setActiveContactId(null);
+    setRoute("home");
+    await persistSettings({ ...settings, lastContactId: null, lastRoute: "home" });
+    setDataLoadSuccess({
+      title,
+      description,
+      eventCount: nextDataset.events.length,
+      contactCount: nextDataset.contacts.length,
+      warnings
+    });
+  }, [persistSettings, settings]);
+
+  const selectLoadedContact = useCallback(async (contactId: string) => {
+    const contact = dataset.contacts.find((item) => item.id === contactId);
+    setActiveContactId(contactId);
+    setRoute("home");
+    await persistSettings({ ...settings, lastContactId: contactId, lastRoute: "home" });
+    setDataLoadSuccess(null);
+    notify(`已选择 ${contact?.displayName ?? "联系人"}`);
+  }, [dataset.contacts, notify, persistSettings, settings]);
+
+  const finishWithoutContact = useCallback(() => {
+    setDataLoadSuccess(null);
+    setRoute("home");
+  }, []);
+
   const scanWechat = useCallback(async () => {
     if (wechatScanning) return;
     const consent = window.confirm(
       "扫描会以只读权限读取当前微信进程内存，用于验证本机数据库密钥；数据库副本会在应用缓存中临时解密，并在正常结束后删除。解析后仅保存联系人名称和通话元数据，不保存聊天正文或密钥；这些元数据当前以未加密 JSON 保存在本机。是否继续？"
     );
     if (!consent) return;
+    setSettingsOpen(false);
+    setDataLoadSuccess(null);
     setWechatScanning(true);
+    setDataLoading({
+      title: "正在读取微信通话",
+      detail: "正在确认已登录的微信进程",
+      progress: 0
+    });
     try {
-      const result = await scanWechatCalls();
+      const result = await scanWechatCalls((progress) => {
+        setDataLoading({
+          title: progress.stage,
+          detail: progress.detail,
+          progress: progress.percent
+        });
+      });
       const validation = validateDataset(result.dataset);
       if (!validation.valid || !validation.dataset) {
         throw new Error(validation.errors[0] ?? "扫描结果未通过数据校验。");
       }
-      await saveDataset(validation.dataset);
-      setDataset(validation.dataset);
-      setDataMode("imported");
-      const contactId = validation.dataset.contacts[0]?.id ?? null;
-      setActiveContactId(contactId);
-      await persistSettings({ ...settings, lastContactId: contactId });
-      setSettingsOpen(false);
-      notify(`已读取 ${result.summary.callEvents} 条微信通话记录`);
-      if (result.summary.warnings.length) notify(result.summary.warnings[0]);
+      await finishDataLoad(
+        validation.dataset,
+        "微信记录加载成功",
+        "通话记录已经整理完成，请选择一位联系人开始查看。",
+        result.summary.warnings
+      );
+      notify(`加载成功：${result.summary.callEvents} 条通话记录`);
     } catch (error) {
       notify(`微信扫描未完成：${String(error)}`);
     } finally {
+      setDataLoading(null);
       setWechatScanning(false);
     }
-  }, [notify, persistSettings, settings, wechatScanning]);
+  }, [finishDataLoad, notify, wechatScanning]);
 
   const chooseImport = useCallback(async () => {
     setImportErrors([]);
     try {
       const file = await chooseImportFile();
       if (!file) return;
+      setSettingsOpen(false);
+      setDataLoadSuccess(null);
+      setDataLoading({
+        title: "正在解析数据文件",
+        detail: "文件读取完成，正在检查格式与数据契约",
+        progress: 25
+      });
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       if (file.sizeBytes > 50 * 1024 * 1024) {
         setImportErrors(["首版最多导入 50 MB 的 JSON 文件。"]);
         return;
       }
       const result = parseDataset(file.content);
+      setDataLoading({
+        title: "正在整理导入内容",
+        detail: "格式检查完成，正在统计联系人和通话记录",
+        progress: 70
+      });
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       if (!result.valid || !result.dataset) {
         setImportErrors(result.errors);
         return;
@@ -175,37 +267,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setImportPreview(makeImportPreview(file.fileName, result.dataset, result.warnings));
     } catch (error) {
       setImportErrors([`无法读取文件：${String(error)}`]);
+    } finally {
+      setDataLoading(null);
     }
   }, []);
 
   const confirmImport = useCallback(async () => {
     if (!importPreview) return;
+    const preview = importPreview;
+    setImportPreview(null);
+    setDataLoading({
+      title: "正在保存通话数据",
+      detail: "正在将联系人和通话记录写入本机应用目录",
+      progress: 82
+    });
     try {
-      await saveDataset(importPreview.dataset);
-      setDataset(importPreview.dataset);
-      setDataMode("imported");
-      const contactId = importPreview.dataset.contacts[0]?.id ?? null;
-      setActiveContactId(contactId);
-      await persistSettings({ ...settings, lastContactId: contactId });
-      setImportPreview(null);
-      notify(`已导入 ${importPreview.eventCount} 条通话记录`);
+      await finishDataLoad(
+        preview.dataset,
+        "数据导入成功",
+        "数据已经安全保存在本机，请选择一位联系人开始查看。",
+        preview.warnings
+      );
+      notify(`加载成功：${preview.eventCount} 条通话记录`);
     } catch (error) {
       setImportErrors([`保存导入数据失败：${String(error)}`]);
+    } finally {
+      setDataLoading(null);
     }
-  }, [importPreview, notify, persistSettings, settings]);
+  }, [finishDataLoad, importPreview, notify]);
 
-  const restoreDemo = useCallback(async () => {
+  const clearDataset = useCallback(async () => {
     try {
       await deleteDataset();
-      setDataset(DEMO_DATASET);
-      setDataMode("demo");
-      const contactId = DEMO_DATASET.contacts[0]?.id ?? null;
-      setActiveContactId(contactId);
-      await persistSettings({ ...settings, lastContactId: contactId });
+      setDataset(createEmptyDataset());
+      setDataMode("empty");
+      setDataLoadSuccess(null);
+      setActiveContactId(null);
+      setRoute("home");
+      await persistSettings({ ...settings, lastContactId: null, lastRoute: "home" });
       setSettingsOpen(false);
-      notify("已恢复示例数据");
+      notify("本地通话数据已删除");
     } catch (error) {
-      notify(`无法删除本地导入数据：${String(error)}`);
+      notify(`无法删除本地通话数据：${String(error)}`);
     }
   }, [notify, persistSettings, settings]);
 
@@ -222,6 +325,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importErrors,
     settingsOpen,
     wechatScanning,
+    dataLoading,
+    dataLoadSuccess,
     toasts,
     navigate,
     selectContact,
@@ -233,12 +338,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     scanWechat,
     confirmImport,
     cancelImport: () => { setImportPreview(null); setImportErrors([]); },
-    restoreDemo,
+    selectLoadedContact,
+    finishWithoutContact,
+    clearDataset,
     notify
   }), [
-    activeContactId, appInfo, chooseImport, confirmImport, dataMode, dataset, importErrors,
-    importPreview, navigate, notify, ready, restoreDemo, route, scanWechat, selectContact, selectedEvent,
-    settings, settingsOpen, toasts, updateSettings, wechatScanning
+    activeContactId, appInfo, chooseImport, confirmImport, dataLoadSuccess, dataLoading, dataMode, dataset,
+    importErrors, clearDataset, finishWithoutContact, importPreview, navigate, notify, ready, route,
+    scanWechat, selectContact, selectLoadedContact, selectedEvent, settings, settingsOpen, toasts,
+    updateSettings, wechatScanning
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -3,6 +3,7 @@ use super::{
     DatasetSource, EventLineage, SourceRef,
 };
 use crate::wechat::discovery::{WechatAccount, WechatSnapshot};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use chrono::{FixedOffset, TimeZone, Utc};
 use md5::{Digest as Md5Digest, Md5};
 use rusqlite::Connection;
@@ -13,11 +14,12 @@ use std::{
 };
 
 const ADAPTER_ID: &str = "wechat-windows-4x";
-const ADAPTER_VERSION: &str = "0.1.0";
-const PARSER_VERSION: &str = "1.0.0";
+const ADAPTER_VERSION: &str = "0.2.0";
+const PARSER_VERSION: &str = "1.1.0";
 const DEDUP_VERSION: &str = "1.0.0";
 const TIMEZONE: &str = "Asia/Shanghai";
 const UTC_OFFSET_MINUTES: i32 = 480;
+const MAX_AVATAR_BYTES: usize = 2 * 1024 * 1024;
 
 pub struct ParsedSnapshot {
     pub dataset: AppDataset,
@@ -27,6 +29,7 @@ pub struct ParsedSnapshot {
 #[derive(Clone, Debug)]
 struct ContactRecord {
     display_name: String,
+    wechat_id: String,
     kind: &'static str,
 }
 
@@ -97,6 +100,23 @@ pub fn parse_snapshot(
         .iter()
         .map(|call| call.username.as_str())
         .collect::<HashSet<_>>();
+    let mut avatar_usernames = used_usernames.clone();
+    avatar_usernames.insert(account.account_wxid.as_str());
+    let (avatars, avatar_wal_omitted) = match snapshot.head_image_database.as_ref() {
+        Some(database) => {
+            match load_local_avatars(database, &plaintext_dir, passphrase, &avatar_usernames) {
+                Ok(result) => result,
+                Err(_) => {
+                    warnings.push("本机头像库暂时无法解析，已使用联系人首字占位。".into());
+                    (HashMap::new(), false)
+                }
+            }
+        }
+        None => (HashMap::new(), false),
+    };
+    if avatar_wal_omitted {
+        warnings.push("头像库的 WAL 未通过完整校验，部分最近头像可能尚未更新。".into());
+    }
     let mut canonical_contacts = Vec::new();
     for username in used_usernames {
         let record = contacts
@@ -114,7 +134,8 @@ pub fn parse_snapshot(
             account_id: account_id.clone(),
             kind: record.kind,
             display_name: record.display_name,
-            avatar_ref: None,
+            wechat_id: Some(record.wechat_id),
+            avatar_ref: avatars.get(username).cloned(),
             aliases: Vec::new(),
             identity_confidence: if contacts.contains_key(username) {
                 "confirmed"
@@ -171,7 +192,8 @@ pub fn parse_snapshot(
             },
             account: Account {
                 id: account_id,
-                display_name: "当前微信账号".into(),
+                display_name: "我".into(),
+                avatar_ref: avatars.get(&account.account_wxid).cloned(),
             },
             contacts: canonical_contacts,
             events,
@@ -212,9 +234,65 @@ fn load_contacts(
             .trim()
             .to_owned();
         let kind = contact_kind(&username);
-        result.insert(username, ContactRecord { display_name, kind });
+        result.insert(
+            username.clone(),
+            ContactRecord {
+                display_name,
+                wechat_id: username,
+                kind,
+            },
+        );
     }
     Ok((result, plaintext.wal_omitted))
+}
+
+fn load_local_avatars(
+    path: &std::path::Path,
+    plaintext_dir: &std::path::Path,
+    passphrase: &[u8],
+    usernames: &HashSet<&str>,
+) -> Result<(HashMap<String, String>, bool), String> {
+    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, passphrase)?;
+    let connection = crypto::open_plaintext_database(&plaintext.path)?;
+    let mut statement = connection
+        .prepare("SELECT username, image_buffer FROM head_image WHERE username IS NOT NULL AND image_buffer IS NOT NULL")
+        .map_err(|_| "头像数据库结构与当前适配器不兼容。".to_string())?;
+    let rows = statement
+        .query_map([], |row| {
+            let username: String = row.get(0)?;
+            let image: Vec<u8> = row.get(1)?;
+            Ok((username, image))
+        })
+        .map_err(|error| format!("无法读取本机头像索引：{error}"))?;
+    let mut avatars = HashMap::new();
+    for row in rows {
+        let (username, image) = row.map_err(|_| "头像记录包含无法解码的字段。".to_string())?;
+        if !usernames.contains(username.as_str()) {
+            continue;
+        }
+        if let Some(data_url) = avatar_data_url(&image) {
+            avatars.insert(username, data_url);
+        }
+    }
+    Ok((avatars, plaintext.wal_omitted))
+}
+
+fn avatar_data_url(image: &[u8]) -> Option<String> {
+    if image.is_empty() || image.len() > MAX_AVATAR_BYTES {
+        return None;
+    }
+    let mime = if image.starts_with(&[0xff, 0xd8, 0xff]) {
+        "image/jpeg"
+    } else if image.starts_with(b"\x89PNG\r\n\x1a\n") {
+        "image/png"
+    } else if image.starts_with(b"GIF87a") || image.starts_with(b"GIF89a") {
+        "image/gif"
+    } else if image.len() >= 12 && image.starts_with(b"RIFF") && &image[8..12] == b"WEBP" {
+        "image/webp"
+    } else {
+        return None;
+    };
+    Some(format!("data:{mime};base64,{}", BASE64.encode(image)))
 }
 
 fn parse_message_database(
@@ -404,7 +482,7 @@ fn build_call(
         _ => "unknown",
     };
     let call = parse_call_payload(content, direction);
-    let started_at = format_timestamp(create_time);
+    let (started_at, answered_at, ended_at) = derive_call_times(create_time, call.duration);
     let mut quality_flags = Vec::new();
     if started_at.is_none() {
         quality_flags.push("missing_start_time");
@@ -440,15 +518,19 @@ fn build_call(
             },
             conversation_id: Some(opaque_hash("conversation", username.as_bytes())),
             started_at,
-            answered_at: None,
-            ended_at: None,
+            answered_at,
+            ended_at,
             timezone: Some(TIMEZONE.into()),
             utc_offset_minutes: Some(UTC_OFFSET_MINUTES),
             connected_duration_seconds: call.duration,
             media_type: call.media_type,
             direction,
             outcome: call.outcome,
-            parse_confidence: call.confidence,
+            parse_confidence: if call.duration.unwrap_or(0) > 0 {
+                "inferred"
+            } else {
+                call.confidence
+            },
             identity_confidence: if contacts.contains_key(username) {
                 "confirmed"
             } else {
@@ -639,6 +721,20 @@ fn collapse_text(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn derive_call_times(
+    bubble_time: i64,
+    connected_duration: Option<u64>,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let ended_at = format_timestamp(bubble_time);
+    let answered_at = connected_duration
+        .filter(|duration| *duration > 0)
+        .and_then(|duration| i64::try_from(duration).ok())
+        .and_then(|duration| bubble_time.checked_sub(duration))
+        .and_then(format_timestamp);
+    let started_at = answered_at.clone().or_else(|| ended_at.clone());
+    (started_at, answered_at, ended_at)
+}
+
 fn format_timestamp(timestamp: i64) -> Option<String> {
     let offset = FixedOffset::east_opt(UTC_OFFSET_MINUTES * 60)?;
     offset
@@ -650,6 +746,7 @@ fn format_timestamp(timestamp: i64) -> Option<String> {
 fn fallback_contact(username: &str) -> ContactRecord {
     ContactRecord {
         display_name: "未知联系人".into(),
+        wechat_id: username.to_owned(),
         kind: contact_kind(username),
     }
 }
@@ -725,6 +822,41 @@ mod tests {
             .outcome,
             "rejected"
         );
+    }
+
+    #[test]
+    fn derives_connected_start_from_bubble_end_time() {
+        let offset = FixedOffset::east_opt(UTC_OFFSET_MINUTES * 60).unwrap();
+        let bubble = offset
+            .with_ymd_and_hms(2026, 10, 13, 23, 5, 57)
+            .unwrap()
+            .timestamp();
+        let (started, answered, ended) = derive_call_times(bubble, Some(7_455));
+        assert_eq!(started.as_deref(), Some("2026-10-13T21:01:42+08:00"));
+        assert_eq!(answered, started);
+        assert_eq!(ended.as_deref(), Some("2026-10-13T23:05:57+08:00"));
+    }
+
+    #[test]
+    fn assigns_cross_midnight_calls_to_their_actual_start_date() {
+        let offset = FixedOffset::east_opt(UTC_OFFSET_MINUTES * 60).unwrap();
+        let bubble = offset
+            .with_ymd_and_hms(2026, 10, 7, 0, 43, 31)
+            .unwrap()
+            .timestamp();
+        let (started, _, ended) = derive_call_times(bubble, Some(8_249));
+        assert_eq!(started.as_deref(), Some("2026-10-06T22:26:02+08:00"));
+        assert_eq!(ended.as_deref(), Some("2026-10-07T00:43:31+08:00"));
+    }
+
+    #[test]
+    fn accepts_supported_avatar_images_only() {
+        assert_eq!(
+            avatar_data_url(&[0xff, 0xd8, 0xff, 0x01]),
+            Some("data:image/jpeg;base64,/9j/AQ==".into())
+        );
+        assert!(avatar_data_url(b"not-an-image").is_none());
+        assert!(avatar_data_url(&vec![0; MAX_AVATAR_BYTES + 1]).is_none());
     }
 
     #[test]

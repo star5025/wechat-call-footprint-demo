@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
+import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildInsights, buildWall, filterEvents, summarize } from "@/data/analytics";
 import { useApp } from "@/state/AppContext";
 import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel } from "@/utils/format";
 
 export function HomePage() {
-  const { dataset, activeContactId, navigate, openEvent, settings, chooseImport } = useApp();
+  const { dataset, activeContactId, navigate, openEvent, settings, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
   const events = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const summary = useMemo(() => summarize(events), [events]);
@@ -27,20 +28,30 @@ export function HomePage() {
   return (
     <section className="view active">
       <header className="welcome">
-        <div><span className="date-line">本地时光 · {dataset.source.displayName}</span><h1>下午好 <span className="wave">👋</span></h1><p>来看看你和重要的人，留下了哪些通话时光。</p></div>
+        <div><h1>下午好 <span className="wave">👋</span></h1><p>来看看你和重要的人，留下了哪些通话时光。</p></div>
         <ContactSwitcher />
       </header>
 
       {!events.length ? (
-        <section className="empty-state-card">
-          <span className="empty-art">☁</span><h2>还没有可以展示的通话</h2><p>导入一份通话足迹 JSON，或者切回示例数据体验完整界面。</p><button className="primary-action" onClick={() => void chooseImport()}>选择数据文件</button>
+        <section className="empty-state-card first-use-card">
+          <span className="empty-art">⌁</span>
+          <span className="soft-label">第一次使用</span>
+          <h2>从你的微信通话开始</h2>
+          <p>通话足迹会在本机只读扫描微信，只整理联系人和通话元数据，不保存聊天正文，也不会修改微信文件。</p>
+          <div className="empty-state-actions">
+            <button className="primary-action" disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
+              {wechatScanning ? "正在扫描，请稍候…" : "扫描本机微信"}
+            </button>
+            <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>导入 JSON</button>
+          </div>
+          <small className="empty-privacy-note">首次扫描前会说明进程内存读取、临时解密和本地保存边界。</small>
         </section>
       ) : (
         <>
           <section className="memory-hero">
             <div className="hero-glow glow-a" /><div className="hero-glow glow-b" />
             <div className="hero-copy"><span className="soft-label">你们的通话时光</span><div className="big-number"><strong>{hours}</strong><span>小时</span><strong>{minutes}</strong><span>分</span></div><p>{formatDate(recentStart)}到 {formatDate(recentEnd)}</p><button className="hero-button" onClick={() => navigate("calls")}>看看每一次 <span>→</span></button></div>
-            <div className="connection-art" aria-hidden="true"><div className="person person-me"><span>我</span></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div><div className="person person-you"><span>{settings.privacyMode ? "♡" : contact?.displayName.slice(0, 1)}</span></div><div className="float-note note-one">♡</div><div className="float-note note-two">✦</div></div>
+            <div className="connection-art" aria-hidden="true"><div className="person-profile"><Avatar avatarRef={dataset.account.avatarRef} label="我" privacyMode={settings.privacyMode} className="person person-me" /><small>{settings.privacyMode ? "我" : dataset.account.displayName}</small></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div>{contact && <div className="person-profile"><ContactAvatar contact={contact} privacyMode={settings.privacyMode} className="person person-you" /><small>{settings.privacyMode ? "重要的人" : contact.displayName}</small></div>}<div className="float-note note-one">♡</div><div className="float-note note-two">✦</div></div>
             <div className="hero-chips"><span>📹 视频 {videoCount} 次</span><span>🎙 语音 {voiceCount} 次</span><span>✨ 共接通 {summary.connectedCount} 次</span></div>
           </section>
 

@@ -6,7 +6,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const MAX_IMPORT_BYTES: u64 = 50 * 1024 * 1024;
 const SETTINGS_FILE: &str = "settings.json";
@@ -181,9 +181,14 @@ async fn scan_wechat_calls(app: AppHandle) -> Result<wechat::WechatScanResult, S
         .path()
         .app_cache_dir()
         .map_err(|error| error.to_string())?;
-    tauri::async_runtime::spawn_blocking(move || wechat::scan(&cache_directory))
-        .await
-        .map_err(|error| format!("微信扫描任务异常结束：{error}"))?
+    let progress_app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        wechat::scan_with_progress(&cache_directory, |progress| {
+            let _ = progress_app.emit("wechat-scan-progress", progress);
+        })
+    })
+    .await
+    .map_err(|error| format!("微信扫描任务异常结束：{error}"))?
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

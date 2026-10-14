@@ -73,7 +73,7 @@ function toEvent(call: RawCall): CallEvent {
   };
 }
 
-export const DEMO_DATASET: AppDataset = {
+export const TEST_DATASET: AppDataset = {
   format: "call-footprint-export",
   formatVersion: "1.0",
   contractVersion: "1.0",
@@ -81,15 +81,16 @@ export const DEMO_DATASET: AppDataset = {
   timezone: "Asia/Shanghai",
   source: {
     kind: "demo",
-    displayName: "内置示例数据",
+    displayName: "合成测试数据",
     sourceVersion: "demo-v1"
   },
-  account: { id: "acc_demo_primary", displayName: "示例账号" },
+  account: { id: "acc_demo_primary", displayName: "示例账号", avatarRef: null },
   contacts: [{
     id: "contact_demo_yin",
     accountId: "acc_demo_primary",
     kind: "person",
     displayName: "音",
+    wechatId: "wxid_test_contact",
     avatarRef: null,
     aliases: [],
     identityConfidence: "confirmed",

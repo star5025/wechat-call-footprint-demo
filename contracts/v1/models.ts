@@ -160,6 +160,9 @@ export interface Contact {
   accountId: OpaqueId;
   kind: ContactKind;
   displayName: string;
+  /** Source-visible WeChat ID. Null for sources that do not provide one. */
+  wechatId?: string | null;
+  /** Local data URL for WeChat scans; never an original filesystem path. */
   avatarRef: string | null;
   aliases: string[];
   identityConfidence: Confidence;

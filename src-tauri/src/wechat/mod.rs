@@ -30,6 +30,14 @@ pub struct WechatScanSummary {
     pub warnings: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WechatScanProgress {
+    pub percent: u8,
+    pub stage: &'static str,
+    pub detail: &'static str,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppDataset {
@@ -58,6 +66,7 @@ pub struct DatasetSource {
 pub struct Account {
     pub id: String,
     pub display_name: String,
+    pub avatar_ref: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -67,6 +76,7 @@ pub struct Contact {
     pub account_id: String,
     pub kind: &'static str,
     pub display_name: String,
+    pub wechat_id: Option<String>,
     pub avatar_ref: Option<String>,
     pub aliases: Vec<String>,
     pub identity_confidence: &'static str,
@@ -157,16 +167,31 @@ pub fn cleanup_cache(app_cache_dir: &Path) {
     discovery::cleanup_stale_snapshots(&app_cache_dir.join("wechat-snapshots"));
 }
 
-pub fn scan(app_cache_dir: &Path) -> Result<WechatScanResult, String> {
+pub fn scan_with_progress<F>(
+    app_cache_dir: &Path,
+    mut report: F,
+) -> Result<WechatScanResult, String>
+where
+    F: FnMut(WechatScanProgress),
+{
     #[cfg(not(windows))]
     return Err("当前自动扫描仅支持 Windows 微信 4.x。".into());
 
     #[cfg(windows)]
     {
+        let emit = |report: &mut F, percent, stage, detail| {
+            report(WechatScanProgress {
+                percent,
+                stage,
+                detail,
+            });
+        };
         let lock = SCAN_LOCK.get_or_init(|| Mutex::new(()));
         let _guard = lock
             .try_lock()
             .map_err(|_| "已有微信扫描正在进行，请等待完成。".to_string())?;
+
+        emit(&mut report, 3, "定位微信", "正在确认已登录的微信进程");
         let installation = windows::find_wechat_installation()?;
         if installation.version != "4.1.15.13" {
             return Err(format!(
@@ -174,19 +199,56 @@ pub fn scan(app_cache_dir: &Path) -> Result<WechatScanResult, String> {
                 installation.version
             ));
         }
+        emit(
+            &mut report,
+            10,
+            "定位数据",
+            "微信版本已确认，正在查找账号数据",
+        );
         let account = discovery::discover_active_account()?;
+
+        emit(
+            &mut report,
+            18,
+            "创建快照",
+            "正在只读复制联系人、头像和消息数据库",
+        );
         let snapshot = discovery::create_snapshot(&account, app_cache_dir)?;
         let _cleanup = SnapshotCleanup(snapshot.root.clone());
+        emit(
+            &mut report,
+            32,
+            "验证适配器",
+            "数据库快照已完成，正在检查版本特征",
+        );
 
         let xor_keys = crypto::extract_static_xor_keys(&installation.dll_path)?;
+        emit(
+            &mut report,
+            38,
+            "验证密钥",
+            "正在从微信内存中查找并验证数据库密钥",
+        );
         let key = Zeroizing::new(windows::recover_account_key(
             &installation,
             &snapshot.validation_database,
             &xor_keys,
         )?);
+        emit(
+            &mut report,
+            62,
+            "解析记录",
+            "密钥已验证，正在解密并解析通话与头像",
+        );
 
         let parsed = parser::parse_snapshot(&snapshot, &account, &key, &installation.version)?;
-        Ok(WechatScanResult {
+        emit(
+            &mut report,
+            94,
+            "整理数据",
+            "解析完成，正在生成联系人和通话统计",
+        );
+        let result = WechatScanResult {
             summary: WechatScanSummary {
                 wechat_version: installation.version,
                 account_label: "当前登录账号".into(),
@@ -196,7 +258,9 @@ pub fn scan(app_cache_dir: &Path) -> Result<WechatScanResult, String> {
                 warnings: parsed.warnings,
             },
             dataset: parsed.dataset,
-        })
+        };
+        emit(&mut report, 100, "加载完成", "本机微信通话数据已整理完成");
+        Ok(result)
     }
 }
 
@@ -209,17 +273,52 @@ mod tests {
     fn scans_local_wechat_without_exposing_private_data() {
         let cache =
             std::env::temp_dir().join(format!("call-footprint-live-test-{}", std::process::id()));
-        let result = scan(&cache).expect("local WeChat scan should succeed");
+        let mut progress = Vec::new();
+        let result = scan_with_progress(&cache, |update| progress.push(update.percent))
+            .expect("local WeChat scan should succeed");
+        let avatars = result
+            .dataset
+            .contacts
+            .iter()
+            .filter(|contact| contact.avatar_ref.is_some())
+            .count();
         eprintln!(
-            "live scan: shards={}, contacts={}, calls={}, warnings={}",
+            "live scan: shards={}, contacts={}, calls={}, avatars={}, warnings={}",
             result.summary.database_shards,
             result.summary.contacts_with_calls,
             result.summary.call_events,
+            avatars,
             result.summary.warnings.len()
         );
         assert!(result.summary.database_shards > 0);
         assert!(result.summary.call_events > 0);
         assert_eq!(result.dataset.format, "call-footprint-export");
+        assert_eq!(progress.last(), Some(&100));
+        assert!(progress.windows(2).all(|pair| pair[0] <= pair[1]));
+        assert!(result.dataset.account.avatar_ref.is_some());
+        assert!(result.dataset.contacts.iter().all(|contact| contact
+            .wechat_id
+            .as_deref()
+            .is_some_and(|value| !value.is_empty())));
+        for event in &result.dataset.events {
+            if let Some(duration) = event.connected_duration_seconds.filter(|value| *value > 0) {
+                let started = chrono::DateTime::parse_from_rfc3339(
+                    event
+                        .started_at
+                        .as_deref()
+                        .expect("connected call should have a start time"),
+                )
+                .unwrap();
+                let ended = chrono::DateTime::parse_from_rfc3339(
+                    event
+                        .ended_at
+                        .as_deref()
+                        .expect("connected call should have an end time"),
+                )
+                .unwrap();
+                assert_eq!((ended - started).num_seconds(), duration as i64);
+            }
+        }
         if let Ok(target_name) = std::env::var("CALL_FOOTPRINT_TEST_CONTACT") {
             let target = result
                 .dataset
@@ -244,6 +343,25 @@ mod tests {
             );
             assert!(!target_events.is_empty());
             assert_eq!(unknown, 0, "reviewed contact media should be classified");
+            if let Ok(review_date) = std::env::var("CALL_FOOTPRINT_TEST_DATE") {
+                let reviewed_times = target_events
+                    .iter()
+                    .filter(|event| {
+                        event
+                            .started_at
+                            .as_deref()
+                            .is_some_and(|value| value.starts_with(&review_date))
+                    })
+                    .map(|event| {
+                        (
+                            event.started_at.as_deref().unwrap_or("unknown"),
+                            event.ended_at.as_deref().unwrap_or("unknown"),
+                            event.connected_duration_seconds,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                eprintln!("reviewed date {review_date}: {reviewed_times:?}");
+            }
         }
         assert!(!cache
             .join("wechat-snapshots")

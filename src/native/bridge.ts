@@ -1,10 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type {
   AppDataset,
   AppInfo,
   AppSettings,
   ExportResult,
   ImportFileResult,
+  WechatScanProgress,
   WechatScanResult
 } from "@/domain";
 
@@ -85,11 +87,20 @@ export async function chooseImportFile(): Promise<ImportFileResult | null> {
   });
 }
 
-export async function scanWechatCalls(): Promise<WechatScanResult> {
+export async function scanWechatCalls(
+  onProgress?: (progress: WechatScanProgress) => void
+): Promise<WechatScanResult> {
   if (!isTauriRuntime()) {
     throw new Error("自动扫描仅在 Windows 桌面版中可用。");
   }
-  return invoke<WechatScanResult>("scan_wechat_calls");
+  const unlisten = onProgress
+    ? await listen<WechatScanProgress>("wechat-scan-progress", (event) => onProgress(event.payload))
+    : null;
+  try {
+    return await invoke<WechatScanResult>("scan_wechat_calls");
+  } finally {
+    unlisten?.();
+  }
 }
 
 export async function exportJson(

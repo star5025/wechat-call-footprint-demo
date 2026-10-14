@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CallsPage } from "@/pages/CallsPage";
 import { DiscoverPage } from "@/pages/DiscoverPage";
@@ -7,8 +8,35 @@ import { useApp } from "@/state/AppContext";
 
 export default function App() {
   const { ready, route } = useApp();
-  if (!ready) {
-    return <div className="splash-screen"><span className="brand-logo splash-logo"><i /><i /><i /></span><h1>通话足迹</h1><p>正在整理本地时光…</p><div className="splash-pulse" /></div>;
+  const [introComplete, setIntroComplete] = useState(false);
+  const [launchPhase, setLaunchPhase] = useState<"enter" | "leaving" | "done">("enter");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIntroComplete(true), 900);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (ready && introComplete && launchPhase === "enter") setLaunchPhase("leaving");
+  }, [introComplete, launchPhase, ready]);
+
+  if (launchPhase !== "done") {
+    return (
+      <div
+        className={`launch-screen ${launchPhase === "leaving" ? "leaving" : ""}`}
+        onAnimationEnd={(event) => {
+          if (launchPhase === "leaving" && event.animationName === "launch-out") {
+            setLaunchPhase("done");
+          }
+        }}
+      >
+        <div className="launch-mark" aria-hidden="true">
+          <i /><i /><i />
+        </div>
+        <h1>通话足迹</h1>
+        <p>珍藏每一次声音相伴</p>
+      </div>
+    );
   }
   return (
     <AppShell>

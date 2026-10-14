@@ -24,7 +24,7 @@ export function Sheets() {
     chooseImport,
     scanWechat,
     wechatScanning,
-    restoreDemo,
+    clearDataset,
     appInfo,
     notify
   } = useApp();
@@ -98,12 +98,12 @@ export function Sheets() {
             <span className="setting-icon blue-setting">♢</span><span><strong>脱敏导出</strong><small>隐藏联系人和来源标识</small></span><i>›</i>
           </button>
           {dataMode === "imported" && (
-            <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => void restoreDemo()}>
-              <span className="setting-icon danger-icon">×</span><span><strong>删除本地导入数据</strong><small>不会删除你选择的原始文件</small></span><i>›</i>
+            <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => void clearDataset()}>
+              <span className="setting-icon danger-icon">×</span><span><strong>删除本地通话数据</strong><small>不会修改或删除微信原始文件</small></span><i>›</i>
             </button>
           )}
         </div>
-        <div className="local-note"><span>✓</span><p><strong>所有内容都在本地</strong><br />当前数据：{dataMode === "demo" ? "内置示例" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
+        <div className="local-note"><span>✓</span><p><strong>所有内容都在本地</strong><br />当前数据：{dataMode === "empty" ? "尚未连接" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
       </aside>
     </>
   );

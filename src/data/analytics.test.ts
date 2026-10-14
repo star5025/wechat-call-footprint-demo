@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildWall, dateRange, filterEvents, summarize } from "@/data/analytics";
-import { DEMO_DATASET } from "@/data/demoDataset";
+import { TEST_DATASET } from "@/data/testDataset.fixture";
 
 describe("call analytics gold standard", () => {
-  const contactId = DEMO_DATASET.contacts[0].id;
-  const events = filterEvents(DEMO_DATASET, contactId);
+  const contactId = TEST_DATASET.contacts[0].id;
+  const events = filterEvents(TEST_DATASET, contactId);
 
   it("matches the reviewed event totals", () => {
     const summary = summarize(events);
@@ -17,7 +17,7 @@ describe("call analytics gold standard", () => {
   });
 
   it("returns a dense contribution wall", () => {
-    const result = buildWall(DEMO_DATASET, contactId, {
+    const result = buildWall(TEST_DATASET, contactId, {
       startDate: "2026-09-22",
       endDate: "2026-10-07",
       timezone: "Asia/Shanghai"
@@ -29,7 +29,7 @@ describe("call analytics gold standard", () => {
   });
 
   it("distinguishes missing coverage from zero events", () => {
-    const result = buildWall(DEMO_DATASET, contactId, {
+    const result = buildWall(TEST_DATASET, contactId, {
       startDate: "2026-09-20",
       endDate: "2026-09-23",
       timezone: "Asia/Shanghai"
@@ -40,7 +40,7 @@ describe("call analytics gold standard", () => {
   });
 
   it("sorts imported events newest first with a stable id tie breaker", () => {
-    const reversed = { ...DEMO_DATASET, events: [...DEMO_DATASET.events].reverse() };
+    const reversed = { ...TEST_DATASET, events: [...TEST_DATASET.events].reverse() };
     const result = filterEvents(reversed, contactId);
     expect(result[0].startedAt).toBe("2026-10-07T00:43:31+08:00");
     expect(result.at(-1)?.startedAt).toBe("2026-09-22T19:11:20+08:00");

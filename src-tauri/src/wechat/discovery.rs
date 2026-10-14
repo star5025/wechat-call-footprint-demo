@@ -11,6 +11,7 @@ pub struct WechatAccount {
     pub account_wxid: String,
     pub message_databases: Vec<PathBuf>,
     pub contact_database: PathBuf,
+    pub head_image_database: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -18,6 +19,7 @@ pub struct WechatSnapshot {
     pub root: PathBuf,
     pub message_databases: Vec<PathBuf>,
     pub contact_database: PathBuf,
+    pub head_image_database: Option<PathBuf>,
     pub validation_database: PathBuf,
 }
 
@@ -186,6 +188,8 @@ fn is_reserved_account_dir(path: &Path) -> bool {
 fn inspect_account(root: PathBuf) -> Option<WechatAccount> {
     let db_storage = root.join("db_storage");
     let contact_database = db_storage.join("contact").join("contact.db");
+    let head_image_path = db_storage.join("head_image").join("head_image.db");
+    let head_image_database = head_image_path.is_file().then_some(head_image_path);
     let message_dir = db_storage.join("message");
     if !contact_database.is_file() || !message_dir.is_dir() {
         return None;
@@ -212,6 +216,7 @@ fn inspect_account(root: PathBuf) -> Option<WechatAccount> {
         account_wxid,
         message_databases,
         contact_database,
+        head_image_database,
     })
 }
 
@@ -257,12 +262,20 @@ pub fn create_snapshot(
         .as_nanos();
     let root = snapshots_root.join(format!("scan-{}-{nonce}", std::process::id()));
     let contact_dir = root.join("contact");
+    let head_image_dir = root.join("head_image");
     let message_dir = root.join("message");
     fs::create_dir_all(&contact_dir).map_err(|error| format!("无法创建安全快照目录：{error}"))?;
+    fs::create_dir_all(&head_image_dir)
+        .map_err(|error| format!("无法创建安全快照目录：{error}"))?;
     fs::create_dir_all(&message_dir).map_err(|error| format!("无法创建安全快照目录：{error}"))?;
 
     let result = (|| {
         let contact_database = stable_copy_database(&account.contact_database, &contact_dir)?;
+        let head_image_database = account
+            .head_image_database
+            .as_ref()
+            .map(|database| stable_copy_database(database, &head_image_dir))
+            .transpose()?;
         let mut message_databases = Vec::with_capacity(account.message_databases.len());
         for database in &account.message_databases {
             message_databases.push(stable_copy_database(database, &message_dir)?);
@@ -275,6 +288,7 @@ pub fn create_snapshot(
             root: root.clone(),
             message_databases,
             contact_database,
+            head_image_database,
             validation_database,
         })
     })();

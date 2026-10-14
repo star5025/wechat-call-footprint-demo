@@ -117,12 +117,13 @@ export function anonymizeDataset(dataset: AppDataset): AppDataset {
     ...structuredClone(dataset),
     exportedAt: new Date().toISOString(),
     source: { ...dataset.source, displayName: "脱敏导出", sourceVersion: null },
-    account: { id: accountId, displayName: "匿名账号" },
+    account: { id: accountId, displayName: "匿名账号", avatarRef: null },
     contacts: dataset.contacts.map((contact, index) => ({
       ...contact,
       id: contactIds.get(contact.id)!,
       accountId,
       displayName: `匿名联系人 ${index + 1}`,
+      wechatId: null,
       avatarRef: null,
       aliases: [],
       mergedFromContactIds: contact.mergedFromContactIds.map((id) => contactIds.get(id)).filter((id): id is string => Boolean(id))

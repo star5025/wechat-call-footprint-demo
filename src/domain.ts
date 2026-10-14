@@ -13,11 +13,12 @@ export type AppRoute = "home" | "wall" | "discover" | "calls";
 export type WallMode = "year" | "month" | "custom";
 export type WallMetric = "duration" | "count";
 export type CallFilterMode = "all" | "video" | "voice" | "missed";
-export type DataMode = "demo" | "imported";
+export type DataMode = "empty" | "imported";
 
 export interface Account {
   id: OpaqueId;
   displayName: string;
+  avatarRef?: string | null;
 }
 
 export interface AppDataset {
@@ -27,7 +28,7 @@ export interface AppDataset {
   exportedAt: RFC3339DateTime;
   timezone: string;
   source: {
-    kind: "demo" | "normalized_file";
+    kind: "empty" | "demo" | "normalized_file";
     displayName: string;
     sourceVersion: string | null;
   };
@@ -80,6 +81,12 @@ export interface WechatScanSummary {
 export interface WechatScanResult {
   dataset: AppDataset;
   summary: WechatScanSummary;
+}
+
+export interface WechatScanProgress {
+  percent: number;
+  stage: string;
+  detail: string;
 }
 
 export interface DatasetValidationResult {
