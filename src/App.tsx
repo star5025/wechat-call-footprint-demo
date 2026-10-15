@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { CallsPage } from "@/pages/CallsPage";
 import { DiscoverPage } from "@/pages/DiscoverPage";
 import { HomePage } from "@/pages/HomePage";
+import { RankingPage } from "@/pages/RankingPage";
 import { WallPage } from "@/pages/WallPage";
 import { useApp } from "@/state/AppContext";
 
@@ -41,6 +42,7 @@ export default function App() {
       {route === "home" && <HomePage />}
       {route === "wall" && <WallPage />}
       {route === "discover" && <DiscoverPage />}
+      {route === "ranking" && <RankingPage />}
       {route === "calls" && <CallsPage />}
     </AppShell>
   );

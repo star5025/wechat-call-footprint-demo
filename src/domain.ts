@@ -9,7 +9,7 @@ import type {
   RFC3339DateTime
 } from "@contracts/models";
 
-export type AppRoute = "home" | "wall" | "discover" | "calls";
+export type AppRoute = "home" | "wall" | "discover" | "ranking" | "calls";
 export type WallMode = "year" | "month" | "custom";
 export type WallMetric = "duration" | "count";
 export type DataMode = "empty" | "imported";

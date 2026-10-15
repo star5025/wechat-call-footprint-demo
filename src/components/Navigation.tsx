@@ -5,6 +5,7 @@ const routes: Array<{ id: AppRoute; icon: string; label: string }> = [
   { id: "home", icon: "🏠", label: "首页" },
   { id: "wall", icon: "📅", label: "通话日历" },
   { id: "discover", icon: "💡", label: "小发现" },
+  { id: "ranking", icon: "🏆", label: "排行" },
   { id: "calls", icon: "📞", label: "记录" }
 ];
 
@@ -16,6 +17,7 @@ export function Navigation() {
         <button
           key={item.id}
           className={route === item.id ? "active" : ""}
+          aria-current={route === item.id ? "page" : undefined}
           onClick={() => navigate(item.id)}
         >
           <span>{item.icon}</span>{item.label}
