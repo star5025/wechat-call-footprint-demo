@@ -220,7 +220,7 @@ export function Sheets() {
           >
             <button className="modal-close" aria-label="取消导出" onClick={() => setExportConfirmOpen(false)}>×</button>
             <h2 id="export-confirm-title">导出通话总结？</h2>
-            <p id="export-confirm-description">确认后选择保存位置。</p>
+            <p id="export-confirm-description">将总结导出为 PNG</p>
             <div className="dialog-buttons export-confirm-actions">
               <button className="secondary-action" onClick={() => setExportConfirmOpen(false)}>取消</button>
               <button className="primary-action" onClick={confirmSummaryExport}>确认</button>
