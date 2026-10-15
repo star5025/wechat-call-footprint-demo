@@ -1,5 +1,5 @@
 import type { CallEvent, Contact } from "@contracts/models";
-import type { AppDataset } from "@/domain";
+import type { Account, AppDataset } from "@/domain";
 import { filterEvents, isConnected, localDate } from "@/data/analytics";
 
 export interface CallTimePeriod {
@@ -10,6 +10,7 @@ export interface CallTimePeriod {
 }
 
 export interface ContactCallSummary {
+  account: Account;
   contact: Contact;
   attemptedCount: number;
   totalDurationSeconds: number;
@@ -130,6 +131,7 @@ export function buildContactCallSummary(
 
   const untimedConnectedCount = connected.length - timed.length;
   return {
+    account: dataset.account,
     contact,
     attemptedCount: events.length,
     totalDurationSeconds: timed.reduce(

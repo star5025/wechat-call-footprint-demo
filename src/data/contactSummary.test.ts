@@ -21,6 +21,8 @@ describe("contact call summary", () => {
     const summary = buildContactCallSummary(TEST_DATASET, TEST_DATASET.contacts[0].id);
     expect(summary).not.toBeNull();
     expect(summary).toMatchObject({
+      account: TEST_DATASET.account,
+      contact: TEST_DATASET.contacts[0],
       attemptedCount: 22,
       totalDurationSeconds: 44_352,
       connectedCount: 16,

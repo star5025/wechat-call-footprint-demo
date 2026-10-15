@@ -1,5 +1,5 @@
 import type { ContactCallSummary } from "@/data/contactSummary";
-import { formatCompactDuration, formatDate, formatDuration } from "@/utils/format";
+import { formatCompactDuration, formatDate } from "@/utils/format";
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
@@ -48,7 +48,7 @@ function drawText(
   color: string,
   align: CanvasTextAlign = "left",
   maxWidth?: number,
-  minSize = 16
+  minSize = 20
 ) {
   let fittedSize = size;
   context.font = `${weight} ${fittedSize}px ${FONT}`;
@@ -84,13 +84,15 @@ function drawAvatar(
   label: string,
   x: number,
   y: number,
-  size: number
+  size: number,
+  from: string,
+  to: string
 ) {
   context.save();
-  context.shadowColor = "rgba(76, 58, 118, .22)";
+  context.shadowColor = "rgba(76,58,118,.2)";
   context.shadowBlur = 34;
   context.shadowOffsetY = 14;
-  fillRoundedRect(context, x, y, size, size, 48, "rgba(255,255,255,.92)");
+  fillRoundedRect(context, x, y, size, size, 48, "rgba(255,255,255,.94)");
   context.restore();
 
   context.save();
@@ -102,12 +104,21 @@ function drawAvatar(
     const sourceY = (image.naturalHeight - side) / 2;
     context.drawImage(image, sourceX, sourceY, side, side, x + 8, y + 8, size - 16, size - 16);
   } else {
-    const avatarGradient = context.createLinearGradient(x, y, x + size, y + size);
-    avatarGradient.addColorStop(0, "#eee9ff");
-    avatarGradient.addColorStop(1, "#d9cdfb");
-    context.fillStyle = avatarGradient;
+    const gradient = context.createLinearGradient(x, y, x + size, y + size);
+    gradient.addColorStop(0, from);
+    gradient.addColorStop(1, to);
+    context.fillStyle = gradient;
     context.fillRect(x + 8, y + 8, size - 16, size - 16);
-    drawText(context, label.slice(0, 1) || "?", x + size / 2, y + size / 2 + 26, 68, 850, "#6852b5", "center");
+    drawText(
+      context,
+      label.slice(0, 1) || "?",
+      x + size / 2,
+      y + size / 2 + 27,
+      68,
+      850,
+      "#ffffff",
+      "center"
+    );
   }
   context.restore();
 }
@@ -116,7 +127,6 @@ interface MetricCard {
   icon: string;
   label: string;
   value: string;
-  note: string;
   from: string;
   to: string;
   valueSize?: number;
@@ -134,18 +144,17 @@ function drawMetricCard(
   gradient.addColorStop(0, card.from);
   gradient.addColorStop(1, card.to);
   context.save();
-  context.shadowColor = "rgba(67, 50, 96, .09)";
+  context.shadowColor = "rgba(67,50,96,.09)";
   context.shadowBlur = 28;
   context.shadowOffsetY = 12;
-  fillRoundedRect(context, x, y, width, height, 38, gradient);
+  fillRoundedRect(context, x, y, width, height, 42, gradient);
   context.restore();
 
-  context.font = `400 50px ${EMOJI_FONT}`;
+  context.font = `400 54px ${EMOJI_FONT}`;
   context.textAlign = "left";
-  context.fillText(card.icon, x + 34, y + 68);
-  drawText(context, card.label, x + 34, y + 122, 24, 700, "rgba(48,40,63,.62)", "left", width - 68);
-  drawText(context, card.value, x + 34, y + 188, card.valueSize ?? 42, 850, "#312a40", "left", width - 68, 22);
-  drawText(context, card.note, x + 34, y + 232, 21, 650, "rgba(48,40,63,.55)", "left", width - 68, 16);
+  context.fillText(card.icon, x + 38, y + 78);
+  drawText(context, card.label, x + 38, y + 140, 27, 750, "rgba(48,40,63,.62)", "left", width - 76);
+  drawText(context, card.value, x + 38, y + 224, card.valueSize ?? 48, 880, "#312a40", "left", width - 76, 25);
 }
 
 const compactDuration = (seconds: number) =>
@@ -163,7 +172,7 @@ export async function createContactSummaryPng(summary: ContactCallSummary): Prom
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("当前设备无法生成图片。")
+  if (!context) throw new Error("当前设备无法生成图片。");
 
   const background = context.createLinearGradient(0, 0, WIDTH, HEIGHT);
   background.addColorStop(0, "#fbfaf8");
@@ -172,14 +181,14 @@ export async function createContactSummaryPng(summary: ContactCallSummary): Prom
   context.fillStyle = background;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  context.globalAlpha = .34;
+  context.globalAlpha = .3;
   context.fillStyle = "#d6c7ff";
   context.beginPath();
-  context.arc(72, 320, 250, 0, Math.PI * 2);
+  context.arc(70, 340, 255, 0, Math.PI * 2);
   context.fill();
   context.fillStyle = "#ffd5c5";
   context.beginPath();
-  context.arc(1030, 760, 330, 0, Math.PI * 2);
+  context.arc(1040, 780, 340, 0, Math.PI * 2);
   context.fill();
   context.globalAlpha = 1;
 
@@ -187,91 +196,85 @@ export async function createContactSummaryPng(summary: ContactCallSummary): Prom
   context.font = `400 43px ${EMOJI_FONT}`;
   context.textAlign = "center";
   context.fillText("📞", 115, 126);
-  drawText(context, "通话足迹", 178, 124, 31, 850, "#292435");
-  drawText(context, "属于你们的通话总结", 1004, 118, 21, 650, "#8b8293", "right", 420);
+  drawText(context, "通话足迹", 178, 124, 32, 880, "#292435");
 
-  const avatar = await loadImage(summary.contact.avatarRef);
-  drawAvatar(context, avatar, summary.contact.displayName, 440, 220, 200);
-  drawText(context, `我和 ${summary.contact.displayName} 的`, WIDTH / 2, 486, 30, 700, "#756b80", "center", 820, 18);
-  drawText(context, "通话足迹", WIDTH / 2, 556, 60, 900, "#292435", "center");
-  const range = !summary.timeInsightsComplete || !summary.durationComplete
-    ? "部分记录日期、时区或时长未知"
-    : summary.firstCallDate && summary.lastCallDate
-      ? `${formatDate(summary.firstCallDate)} — ${formatDate(summary.lastCallDate)}`
-      : "暂无可用日期";
-  drawText(context, range, WIDTH / 2, 608, 23, 650, "#8b8293", "center", 800);
+  const [accountAvatar, contactAvatar] = await Promise.all([
+    loadImage(summary.account.avatarRef),
+    loadImage(summary.contact.avatarRef)
+  ]);
+  drawAvatar(context, accountAvatar, summary.account.displayName, 250, 220, 190, "#8b74d8", "#b294e9");
+  drawAvatar(context, contactAvatar, summary.contact.displayName, 640, 220, 190, "#f0a6b8", "#d985ad");
 
-  const heroGradient = context.createLinearGradient(74, 680, 1006, 1008);
+  const connection = context.createLinearGradient(442, 0, 638, 0);
+  connection.addColorStop(0, "#9b87df");
+  connection.addColorStop(1, "#df94b1");
+  context.strokeStyle = connection;
+  context.lineWidth = 7;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(472, 315);
+  context.lineTo(608, 315);
+  context.stroke();
+  fillRoundedRect(context, 506, 281, 68, 68, 25, "#ffffff");
+  context.font = `400 34px ${EMOJI_FONT}`;
+  context.textAlign = "center";
+  context.fillText("💜", 540, 327);
+
+  drawText(context, summary.account.displayName, 345, 462, 29, 820, "#4c4458", "center", 300, 22);
+  drawText(context, summary.contact.displayName, 735, 462, 29, 820, "#4c4458", "center", 300, 22);
+  drawText(context, "我们的通话足迹", WIDTH / 2, 570, 58, 920, "#292435", "center", 880, 34);
+
+  const heroGradient = context.createLinearGradient(74, 650, 1006, 980);
   heroGradient.addColorStop(0, "#7862c8");
   heroGradient.addColorStop(.52, "#9a7ddd");
   heroGradient.addColorStop(1, "#e497b4");
   context.save();
-  context.shadowColor = "rgba(105, 78, 167, .25)";
+  context.shadowColor = "rgba(105,78,167,.24)";
   context.shadowBlur = 42;
   context.shadowOffsetY = 19;
-  fillRoundedRect(context, 74, 678, 932, 332, 52, heroGradient);
+  fillRoundedRect(context, 74, 650, 932, 330, 54, heroGradient);
   context.restore();
-  const durationLabel = summary.durationComplete ? "当前记录内接通总时长" : "当前记录内已知接通时长";
+
+  const durationLabel = summary.durationComplete ? "通话总时长" : "已知通话时长";
   const durationValue = summary.timedCount > 0
     ? compactDuration(summary.totalDurationSeconds)
     : summary.connectedCount > 0 ? "时长未知" : "0 分钟";
-  const durationNote = summary.untimedConnectedCount > 0
-    ? `${summary.connectedCount} 次确认接通 · ${summary.untimedConnectedCount} 次时长未知`
-    : `${summary.connectedCount} 次已接通通话`;
-  drawText(context, durationLabel, 132, 758, 25, 700, "rgba(255,255,255,.78)");
-  drawText(context, durationValue, 132, 862, 66, 900, "#ffffff", "left", 610, 36);
-  drawText(context, durationNote, 132, 922, 25, 700, "rgba(255,255,255,.78)", "left", 650, 18);
-  context.font = `400 90px ${EMOJI_FONT}`;
+  drawText(context, durationLabel, 132, 760, 31, 780, "rgba(255,255,255,.8)");
+  drawText(context, durationValue, 132, 886, 72, 920, "#ffffff", "left", 690, 40);
+  context.font = `400 92px ${EMOJI_FONT}`;
   context.textAlign = "center";
-  context.fillText("💬", 864, 878);
+  context.fillText("💬", 865, 855);
 
   const longestDate = !summary.durationComplete || !summary.timeInsightsComplete
     ? "暂无法判断"
     : summary.longestCallDurationSeconds === null
       ? "暂无"
       : summary.longestCallDate ? formatDate(summary.longestCallDate) : "日期未知";
-  const longestDuration = !summary.durationComplete
-    ? `${summary.untimedConnectedCount} 次接通时长未知`
-    : !summary.timeInsightsComplete
-      ? "部分记录日期或时区未知"
-      : summary.longestCallDurationSeconds === null
-        ? "没有可用时长"
-        : `${summary.longestCallDate ? "当天最长" : "最长通话"} ${formatDuration(summary.longestCallDurationSeconds)}`;
-  const favorite = summary.favoritePeriod;
   const streakValue = summary.timeInsightsComplete
     ? `${summary.longestStreakDays} 天`
     : "暂无法判断";
-  const streakNote = summary.timeInsightsComplete
-    ? summary.longestStreakDays ? "每天都有已接通通话" : "暂无连续通话"
-    : "部分记录日期或时区未知";
+  const favorite = summary.favoritePeriod;
   const cards: MetricCard[] = [
-    { icon: "📅", label: "当前记录内最长通话日期", value: longestDate, note: longestDuration, from: "#eee9ff", to: "#ded4ff", valueSize: 37 },
-    { icon: "🔥", label: "最长连续通话", value: streakValue, note: streakNote, from: "#fff0e7", to: "#ffd9ca", valueSize: 38 },
-    { icon: "🕘", label: "最常通话时段", value: favorite?.label ?? "时段未知", note: favorite ? `${favorite.rangeLabel} · ${favorite.count} 次` : "部分记录时间或时区未知", from: "#e5f7f0", to: "#ccefe3", valueSize: 38 },
-    { icon: "📞", label: "当前记录内接通次数", value: `${summary.connectedCount} 次`, note: summary.untimedConnectedCount ? `${summary.untimedConnectedCount} 次时长未知` : "仅统计确认接通的通话", from: "#e8f3fc", to: "#d7eafe" }
+    { icon: "📅", label: "最长通话日期", value: longestDate, from: "#eee9ff", to: "#ded4ff", valueSize: 43 },
+    { icon: "🔥", label: "最长连续通话", value: streakValue, from: "#fff0e7", to: "#ffd9ca" },
+    { icon: "🕘", label: "最常通话时段", value: favorite?.label ?? "暂无法判断", from: "#e5f7f0", to: "#ccefe3", valueSize: 44 },
+    { icon: "📞", label: "接通次数", value: `${summary.connectedCount} 次`, from: "#e8f3fc", to: "#d7eafe" }
   ];
-  const positions = [[74, 1060], [558, 1060], [74, 1364], [558, 1364]];
+  const positions = [[74, 1050], [558, 1050], [74, 1370], [558, 1370]];
   cards.forEach((card, index) => {
     const [x, y] = positions[index];
-    drawMetricCard(context, card, x, y, 448, 270);
+    drawMetricCard(context, card, x, y, 448, 280);
   });
 
-  const qualityNote = summary.durationComplete && summary.timeInsightsComplete && !summary.hasQualityWarnings
-    ? "根据当前已保存记录整理 · 不包含聊天内容"
-    : "当前已保存记录部分信息不完整 · 只展示可以确认的内容";
-  drawText(context, "每一次接通，都留下了一点共同的时间。", WIDTH / 2, 1740, 27, 700, "#665a72", "center", 900, 20);
-  drawText(context, qualityNote, WIDTH / 2, 1802, 20, 650, "#998fa1", "center", 900, 16);
-  const generatedAt = new Date();
-  drawText(
-    context,
-    `${generatedAt.getFullYear()} 年 ${generatedAt.getMonth() + 1} 月 ${generatedAt.getDate()} 日生成`,
-    WIDTH / 2,
-    1842,
-    18,
-    650,
-    "#aea5b3",
-    "center"
-  );
+  const ending = context.createLinearGradient(260, 0, 820, 0);
+  ending.addColorStop(0, "rgba(126,101,203,0)");
+  ending.addColorStop(.5, "rgba(126,101,203,.42)");
+  ending.addColorStop(1, "rgba(223,143,177,0)");
+  context.fillStyle = ending;
+  context.fillRect(260, 1785, 560, 4);
+  context.font = `400 42px ${EMOJI_FONT}`;
+  context.textAlign = "center";
+  context.fillText("📞  ·  💜  ·  📞", WIDTH / 2, 1815);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

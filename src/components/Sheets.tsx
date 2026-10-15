@@ -137,6 +137,20 @@ export function Sheets() {
   return (
     <>
       {anyOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
+      {dataMode === "imported" && summaryContactId && !anyOpen && (
+        <button
+          className={`summary-image-fab ${exportingSummary ? "exporting" : ""}`}
+          disabled={wechatScanning || exportingSummary}
+          aria-label={`为${summaryContact?.displayName ?? "当前联系人"}导出通话总结长图`}
+          onClick={() => void exportSummaryImage()}
+        >
+          <span className="summary-image-fab-icon" aria-hidden="true">{exportingSummary ? "⏳" : "🖼️"}</span>
+          <span className="summary-image-fab-copy">
+            <strong>{exportingSummary ? "正在生成长图" : "导出总结长图"}</strong>
+            <small>{summaryContact?.displayName ?? "当前联系人"}</small>
+          </span>
+        </button>
+      )}
       <aside className={`detail-sheet ${selectedEvent ? "open" : ""}`} aria-hidden={!selectedEvent}>
         <button className="sheet-close" onClick={closeEvent}>×</button>
         {selectedEvent && (
@@ -172,11 +186,6 @@ export function Sheets() {
           <button className="setting-item" disabled={wechatScanning} onClick={() => void chooseImport()}>
             <span className="setting-icon lavender">📥</span><span><strong>导入通话数据</strong><small>自动扫描不可用时选择 v1 JSON</small></span><i>›</i>
           </button>
-          {dataMode === "imported" && summaryContactId && (
-            <button className="setting-item summary-image-setting" disabled={wechatScanning || exportingSummary} onClick={() => void exportSummaryImage()}>
-              <span className="setting-icon blue-setting">{exportingSummary ? "⏳" : "🖼️"}</span><span><strong>{exportingSummary ? "正在生成总结长图" : "保存联系人通话总结长图"}</strong><small>{exportingSummary ? `正在整理${summaryContact?.displayName ?? "当前联系人"}的通话信息` : `为${summaryContact?.displayName ?? "当前联系人"}生成主题 PNG 图片`}</small></span><i>{exportingSummary ? "请稍候" : "›"}</i>
-            </button>
-          )}
           <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData()}>
             <span className="setting-icon peach">📤</span><span><strong>完整数据导出</strong><small>可重新导入，包含联系人名称</small></span><i>›</i>
           </button>
