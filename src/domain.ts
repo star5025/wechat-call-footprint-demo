@@ -12,7 +12,6 @@ import type {
 export type AppRoute = "home" | "wall" | "discover" | "calls";
 export type WallMode = "year" | "month" | "custom";
 export type WallMetric = "duration" | "count";
-export type CallFilterMode = "all" | "video" | "voice" | "missed";
 export type DataMode = "empty" | "imported";
 
 export interface Account {
