@@ -23,7 +23,6 @@ export function HomePage() {
   const activeDays = wall.days.filter((day) => day.connectedCount > 0);
   const max = Math.max(1, ...activeDays.map((day) => metric === "duration" ? day.durationSeconds : day.connectedCount));
   const insights = buildInsights(events);
-  const longest = events.find((event) => event.id === summary.longestEventId) ?? null;
   const latest = events[0] ?? null;
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
   const contactName = contact?.displayName ?? "联系人";
@@ -63,9 +62,9 @@ export function HomePage() {
           </section>
 
           <section className="quick-stories">
-            <article className="story-card story-purple" onClick={() => longest && openEvent(longest)}><div className="story-icon moon-icon"><span>🌙</span></div><div><small>最长通话</small><strong>{formatDuration(summary.longestDurationSeconds)}</strong></div><button aria-label="查看最长通话">↗</button></article>
-            <article className="story-card story-peach" onClick={() => navigate("discover")}><div className="story-icon clock-icon"><span>🕘</span></div><div><small>常见开始时段</small><strong>晚上 9 点</strong><p>{insights[0]?.description}</p></div><button aria-label="查看时间规律">↗</button></article>
-            <article className="story-card story-mint" onClick={() => navigate("calls")}><div className="story-icon ring-icon"><span>📞</span></div><div><small>接通次数</small><strong>{summary.connectedCount} 次</strong><p>平均每次 {formatCompactDuration(Math.round(summary.meanDurationSeconds ?? 0))}</p></div><button aria-label="查看接通记录">↗</button></article>
+            <article className="story-card story-purple"><div className="story-icon moon-icon"><span>🌙</span></div><div><small>最长通话</small><strong>{formatDuration(summary.longestDurationSeconds)}</strong></div></article>
+            <article className="story-card story-peach"><div className="story-icon clock-icon"><span>🕘</span></div><div><small>常见开始时段</small><strong>晚上 9 点</strong><p>{insights[0]?.description}</p></div></article>
+            <article className="story-card story-mint"><div className="story-icon ring-icon"><span>📞</span></div><div><small>接通次数</small><strong>{summary.connectedCount} 次</strong><p>平均每次 {formatCompactDuration(Math.round(summary.meanDurationSeconds ?? 0))}</p></div></article>
           </section>
 
           <section className="soft-panel rhythm-panel">
