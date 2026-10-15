@@ -18,16 +18,13 @@ export function RankingPage() {
     <section className="view active ranking-page">
       <header className="simple-header ranking-header">
         <span className="page-orb orb-ranking">🏆</span>
-        <div>
-          <h1>通话时长排行</h1>
-          <p>按每位联系人的已接通通话总时长排序。</p>
-        </div>
+        <div><h1>通话时长排行</h1></div>
       </header>
 
       {!ranking.length ? (
         <article className="gentle-note ranking-empty">
           <span>📭</span>
-          <div><strong>还没有可以排行的通话记录</strong><p>读取通话记录后，这里会自动生成排行榜。</p></div>
+          <div><strong>还没有可以排行的通话记录</strong></div>
         </article>
       ) : (
         <>
@@ -46,7 +43,7 @@ export function RankingPage() {
           {remaining.length > 0 && (
             <section className="ranking-list-panel soft-panel" aria-labelledby="ranking-list-title">
               <div className="ranking-list-heading">
-                <div><h2 id="ranking-list-title">更多排名</h2><p>第 4 名及以后</p></div>
+                <div><h2 id="ranking-list-title">更多排名</h2></div>
                 <span>共 {ranking.length} 位联系人</span>
               </div>
               <div className="ranking-list">

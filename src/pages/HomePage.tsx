@@ -52,14 +52,12 @@ export function HomePage() {
           <span className="empty-art">📥</span>
           <span className="soft-label">尚未导入数据</span>
           <h2>导入微信通话记录</h2>
-          <p>通话足迹会在本机只读扫描微信，只整理联系人和通话元数据，不保存聊天正文，也不会修改微信文件。</p>
           <div className="empty-state-actions">
             <button className="primary-action" disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
               {wechatScanning ? "正在扫描，请稍候…" : "扫描本机微信"}
             </button>
             <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>导入 JSON</button>
           </div>
-          <small className="empty-privacy-note">首次扫描前会说明进程内存读取、临时解密和本地保存边界。</small>
         </section>
       ) : (
         <>

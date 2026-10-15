@@ -15,7 +15,7 @@ export function DiscoverPage() {
 
   return (
     <section className="view active">
-      <header className="simple-header"><span className="page-orb orb-lavender">💡</span><div><h1>关于你们的小发现</h1><p>从已有通话记录中整理而来。</p></div></header>
+      <header className="simple-header"><span className="page-orb orb-lavender">💡</span><div><h1>关于你们的小发现</h1></div></header>
       <div className="discovery-grid">
         <article className="discovery-card night-card"><span className="discovery-tag">{night?.eyebrow}</span><h2>夜晚，是通话更常<br />开始的时候</h2><p>{night?.description}</p><div className="night-sky"><i /><i /><i /><div className="skyline" /><span className="sky-moon">🌙</span></div></article>
         <article className="discovery-card donut-card"><span className="discovery-tag mint-tag">{duration?.eyebrow}</span><h2>超过 30 分钟<br />的通话</h2><div className="donut" style={{ background: `conic-gradient(#68b99e 0 ${connectedEvents.length ? Number(duration?.value ?? 0) / connectedEvents.length * 100 : 0}%, rgba(255,255,255,.72) 0)` }}><div><strong>{duration?.value}</strong><span>次</span></div></div><p>{duration?.description}</p></article>
