@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ContactAvatar } from "@/components/ContactAvatar";
 import { rankContactsByDuration } from "@/data/rankings";
 import { useApp } from "@/state/AppContext";
@@ -9,27 +9,10 @@ const formatRankDuration = (seconds: number) =>
   seconds < 60 ? `${seconds} 秒` : formatCompactDuration(seconds);
 
 export function RankingPage() {
-  const { dataset, activeContactId, selectContact, navigate } = useApp();
-  const [pendingContactId, setPendingContactId] = useState<string | null>(null);
+  const { dataset } = useApp();
   const ranking = useMemo(() => rankContactsByDuration(dataset), [dataset]);
   const podium = ranking.slice(0, 3);
   const remaining = ranking.slice(3);
-
-  useEffect(() => {
-    if (pendingContactId && activeContactId === pendingContactId) {
-      setPendingContactId(null);
-      navigate("calls");
-    }
-  }, [activeContactId, navigate, pendingContactId]);
-
-  const openContactCalls = (contactId: string) => {
-    if (activeContactId === contactId) {
-      navigate("calls");
-      return;
-    }
-    setPendingContactId(contactId);
-    selectContact(contactId);
-  };
 
   return (
     <section className="view active ranking-page">
@@ -50,31 +33,25 @@ export function RankingPage() {
         <>
           <section className="rank-podium" aria-label="通话时长前三名">
             {podium.map((item, index) => (
-              <button
-                className={`rank-card rank-${item.rank}`}
-                key={item.contact.id}
-                onClick={() => openContactCalls(item.contact.id)}
-                aria-label={`第 ${item.rank} 名，${item.contact.displayName}，累计 ${formatRankDuration(item.totalDurationSeconds)}，查看通话记录`}
-              >
+              <article className={`rank-card rank-${item.rank}`} key={item.contact.id}>
                 <span className="rank-medal" aria-hidden="true">{medals[index]}</span>
                 <ContactAvatar contact={item.contact} className="rank-avatar" />
                 <strong>{item.contact.displayName}</strong>
                 <span className="rank-duration">{formatRankDuration(item.totalDurationSeconds)}</span>
                 <small>{item.connectedCount} 次接通{item.unknownDurationCount ? ` · ${item.unknownDurationCount} 条未计时` : ""}</small>
-                <i>查看记录 →</i>
-              </button>
+              </article>
             ))}
           </section>
 
           {remaining.length > 0 && (
             <section className="ranking-list-panel soft-panel" aria-labelledby="ranking-list-title">
               <div className="ranking-list-heading">
-                <div><h2 id="ranking-list-title">更多排名</h2><p>点击联系人查看对应通话记录</p></div>
+                <div><h2 id="ranking-list-title">更多排名</h2><p>第 4 名及以后</p></div>
                 <span>共 {ranking.length} 位联系人</span>
               </div>
               <div className="ranking-list">
                 {remaining.map((item) => (
-                  <button key={item.contact.id} onClick={() => openContactCalls(item.contact.id)}>
+                  <article key={item.contact.id}>
                     <b className="rank-number">{item.rank}</b>
                     <ContactAvatar contact={item.contact} className="ranking-list-avatar" />
                     <span className="ranking-contact-copy">
@@ -85,8 +62,7 @@ export function RankingPage() {
                       <strong>{formatRankDuration(item.totalDurationSeconds)}</strong>
                       <small>累计时长</small>
                     </span>
-                    <i aria-hidden="true">›</i>
-                  </button>
+                  </article>
                 ))}
               </div>
             </section>
