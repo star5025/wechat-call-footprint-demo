@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CallEvent } from "@contracts/models";
+import { ThemeDatePicker } from "@/components/ThemeDatePicker";
 import { filterEvents } from "@/data/analytics";
 import {
   applyCallRecordFilters,
@@ -65,7 +66,7 @@ export function CallsPage() {
         <label><span>排序方式</span><select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as CallsSortOrder)}><option value="newest">最新通话优先</option><option value="durationDesc">时长从多到少</option><option value="durationAsc">时长从少到多</option></select></label>
         {callsDateFilter && <button className="date-filter-chip" onClick={clearCallsDateFilter}><span>📅 {formatDate(callsDateFilter)}</span><b>×</b></button>}
       </section>
-      {!callsDateFilter && timeRange === "custom" && <div className="calls-custom-range"><label><span>开始日期</span><input type="date" value={customStart} max={customEnd || undefined} onChange={(event) => setCustomStart(event.target.value)} /></label><i>—</i><label><span>结束日期</span><input type="date" value={customEnd} min={customStart || undefined} onChange={(event) => setCustomEnd(event.target.value)} /></label></div>}
+      {!callsDateFilter && timeRange === "custom" && <div className="calls-custom-range"><div className="theme-field"><span>开始日期</span><ThemeDatePicker label="开始日期" value={customStart} max={customEnd || undefined} onChange={setCustomStart} /></div><i>—</i><div className="theme-field"><span>结束日期</span><ThemeDatePicker label="结束日期" value={customEnd} min={customStart || undefined} onChange={setCustomEnd} /></div></div>}
 
       <div className="call-feed">
         {!filtered.length && <article className="gentle-note"><span>📭</span><div><strong>没有匹配的记录</strong></div></article>}
