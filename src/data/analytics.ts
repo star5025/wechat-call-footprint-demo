@@ -18,8 +18,8 @@ export function contributionLevel(
   metric: "duration" | "count",
   max: number
 ): number {
-  if (!day.callCount || !max) return 0;
-  const value = metric === "duration" ? day.durationSeconds : day.callCount;
+  if (!day.connectedCount || !max) return 0;
+  const value = metric === "duration" ? day.durationSeconds : day.connectedCount;
   return Math.max(1, Math.min(4, Math.ceil(value / max * 4)));
 }
 
@@ -63,7 +63,7 @@ export function summarize(events: CallEvent[]): CallSummary {
     null
   );
   const dated = events.filter((event) => event.startedAt !== null);
-  const dates = new Set(dated.map((event) => localDate(event.startedAt)).filter(Boolean));
+  const connectedDates = new Set(timed.map((event) => localDate(event.startedAt)).filter(Boolean));
 
   return {
     attemptedCount: events.length,
@@ -77,8 +77,8 @@ export function summarize(events: CallEvent[]): CallSummary {
     longestEventId: longest?.id ?? null,
     firstEventAt: dated.at(-1)?.startedAt ?? null,
     lastEventAt: dated[0]?.startedAt ?? null,
-    activeDayCount: dates.size,
-    completeCoverageDayCount: dates.size
+    activeDayCount: connectedDates.size,
+    completeCoverageDayCount: connectedDates.size
   };
 }
 

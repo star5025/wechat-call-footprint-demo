@@ -40,7 +40,7 @@ export function WallPage() {
   const rangeEvents = useMemo(() => filterEvents(dataset, activeContactId, range.startDate, range.endDate), [dataset, activeContactId, range]);
   const summary = useMemo(() => summarize(rangeEvents), [rangeEvents]);
   const selectedEvents = selectedDate ? filterEvents(dataset, activeContactId, selectedDate, selectedDate) : [];
-  const max = Math.max(1, ...wall.days.map((day) => metric === "duration" ? day.durationSeconds : day.callCount));
+  const max = Math.max(1, ...wall.days.map((day) => metric === "duration" ? day.durationSeconds : day.connectedCount));
   const lead = (parseDate(range.startDate).getDay() + 6) % 7;
   const weekColumns = Math.max(1, Math.ceil((lead + wall.days.length) / 7));
   const calendarColumns = mode === "year"
@@ -66,7 +66,7 @@ export function WallPage() {
   };
 
   const showDayTooltip = (day: ContributionDay, element: HTMLElement) => {
-    if (day.callCount === 0) {
+    if (day.connectedCount === 0) {
       setHoveredDay(null);
       return;
     }
@@ -95,18 +95,18 @@ export function WallPage() {
 
       <section className="wall-summary" aria-label={`${title}通话统计`}>
         <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>{summary.connectedCount} 次接通 · {title}</span></article>
-        <article className="wall-stat"><b>📞</b><small>通话次数</small><strong>{summary.attemptedCount} 次</strong><span>{summary.connectedCount} 次接通 · {summary.missedOrCancelledCount} 次未接通</span></article>
+        <article className="wall-stat"><b>📞</b><small>通话次数</small><strong>{summary.connectedCount} 次</strong><span>仅统计已接通通话</span></article>
         <article className="wall-stat"><b>📅</b><small>有记录日期</small><strong>{summary.activeDayCount} 天</strong><span>所选范围共 {rangeDayCount} 天</span></article>
         <article className="wall-stat"><b>🏆</b><small>最长通话时长</small><strong>{summary.longestDurationSeconds ? formatDuration(summary.longestDurationSeconds) : "暂无"}</strong><span>{longestEvent?.startedAt ? formatDate(longestEvent.startedAt.slice(0, 10)) : "所选范围内暂无接通记录"}</span></article>
       </section>
 
       <section className={`contribution-card mode-${mode}`}>
-        <div className="contribution-topline"><div><h2>{title}</h2><p>{wall.quality.overallState === "partial" ? "虚线格表示该日期没有可读取的数据覆盖" : "颜色深度表示当日接通时长"}</p></div><div className="wall-legend"><span>少</span>{[0,1,2,3,4].map((level) => <i key={level} data-level={level} />)}<span>多</span></div></div>
-        <div className="wall-scroll"><div className="wall-months" style={{ gridTemplateColumns: calendarColumns }}>{monthStarts.map((item) => <span className="wall-month-label" key={item.date} style={{ gridColumn: `${item.column}/span 3` }}>{Number(item.date.slice(5,7))}月</span>)}</div><div className="wall-grid-wrap"><div className="wall-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div className="contribution-grid" style={{ gridTemplateColumns: calendarColumns }}>{Array.from({ length: lead }, (_, index) => <span className="wall-cell blank" key={`blank-${index}`} />)}{wall.days.map((day) => <button key={day.date} className={`wall-cell ${day.coverage}${day.callCount > 0 ? " has-record" : ""}`} data-level={contributionLevel(day, metric, max)} aria-label={`${formatDate(day.date)}，${day.callCount} 条通话记录，共 ${formatDuration(day.durationSeconds)}`} disabled={day.callCount === 0} onMouseEnter={(event) => showDayTooltip(day, event.currentTarget)} onMouseLeave={() => setHoveredDay(null)} onFocus={(event) => showDayTooltip(day, event.currentTarget)} onBlur={() => setHoveredDay(null)} onClick={() => day.callCount > 0 && setSelectedDate(day.date)} />)}</div></div></div>
+        <div className="contribution-topline"><div><h2>{title}</h2><p>{wall.quality.overallState === "partial" ? "浅色格表示这段时间没有找到记录" : "颜色深度表示当日接通时长"}</p></div><div className="wall-legend"><span>少</span>{[0,1,2,3,4].map((level) => <i key={level} data-level={level} />)}<span>多</span></div></div>
+        <div className="wall-scroll"><div className="wall-months" style={{ gridTemplateColumns: calendarColumns }}>{monthStarts.map((item) => <span className="wall-month-label" key={item.date} style={{ gridColumn: `${item.column}/span 3` }}>{Number(item.date.slice(5,7))}月</span>)}</div><div className="wall-grid-wrap"><div className="wall-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div className="contribution-grid" style={{ gridTemplateColumns: calendarColumns }}>{Array.from({ length: lead }, (_, index) => <span className="wall-cell blank" key={`blank-${index}`} />)}{wall.days.map((day) => <button key={day.date} className={`wall-cell ${day.coverage}${day.connectedCount > 0 ? " has-record" : ""}`} data-level={contributionLevel(day, metric, max)} aria-label={`${formatDate(day.date)}，${day.connectedCount} 次已接通，共 ${formatDuration(day.durationSeconds)}`} disabled={day.connectedCount === 0} onMouseEnter={(event) => showDayTooltip(day, event.currentTarget)} onMouseLeave={() => setHoveredDay(null)} onFocus={(event) => showDayTooltip(day, event.currentTarget)} onBlur={() => setHoveredDay(null)} onClick={() => day.connectedCount > 0 && setSelectedDate(day.date)} />)}</div></div></div>
         <div className="wall-footnote"><span><b /> 有通话记录</span><span>点击日期查看详情</span><span className={wall.quality.overallState === "partial" ? "quality-pill warning" : "quality-pill"}>{wall.quality.overallState === "partial" ? "部分数据" : "数据完整"}</span></div>
       </section>
 
-      {hoveredDay && hoveredDay.day.callCount > 0 && (
+      {hoveredDay && hoveredDay.day.connectedCount > 0 && (
         <div
           className="wall-hover-card"
           role="tooltip"
@@ -114,7 +114,7 @@ export function WallPage() {
         >
           <strong>{formatDate(hoveredDay.day.date)}</strong>
           <span>{formatDuration(hoveredDay.day.durationSeconds)}</span>
-          <small>{hoveredDay.day.callCount} 条记录 · {hoveredDay.day.connectedCount} 次接通</small>
+          <small>{hoveredDay.day.connectedCount} 次已接通</small>
         </div>
       )}
 

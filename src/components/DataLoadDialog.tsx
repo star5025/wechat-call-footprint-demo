@@ -65,7 +65,7 @@ export function DataLoadDialog() {
   const callCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const event of dataset.events) {
-      if (event.contactId) counts.set(event.contactId, (counts.get(event.contactId) ?? 0) + 1);
+      if (event.contactId && (event.connectedDurationSeconds ?? 0) > 0) counts.set(event.contactId, (counts.get(event.contactId) ?? 0) + 1);
     }
     return counts;
   }, [dataset.events]);
@@ -131,7 +131,7 @@ export function DataLoadDialog() {
                   <ContactAvatar contact={contact} className="choice-avatar" />
                   <span className="choice-contact-copy">
                     <strong>{contact.displayName}</strong>
-                    <small>{kindLabel(contact.kind)} · {callCounts.get(contact.id) ?? 0} 条通话</small>
+                    <small>{kindLabel(contact.kind)} · {callCounts.get(contact.id) ?? 0} 次已接通</small>
                   </span>
                   <i>查看 →</i>
                 </button>

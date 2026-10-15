@@ -46,11 +46,15 @@ describe("call analytics gold standard", () => {
     });
     expect(result.days).toHaveLength(16);
     expect(result.days.reduce((sum, day) => sum + day.callCount, 0)).toBe(22);
+    expect(result.days.reduce((sum, day) => sum + day.connectedCount, 0)).toBe(16);
     expect(result.days.reduce((sum, day) => sum + day.durationSeconds, 0)).toBe(44_352);
     expect(result.days.find((day) => day.date === "2026-10-07")?.durationSeconds).toBe(8_249);
   });
 
-  it("keeps missed-only days visible on the contribution wall", () => {
+  it("does not count missed-only days as calls on the contribution wall", () => {
+    const missedOnlyEvents = events.filter((event) => (event.connectedDurationSeconds ?? 0) === 0);
+    expect(summarize(missedOnlyEvents).activeDayCount).toBe(0);
+
     const missedOnlyDay = {
       date: "2026-10-14",
       callCount: 1,
@@ -62,8 +66,8 @@ describe("call analytics gold standard", () => {
       coverage: "complete" as const,
       qualityFlags: []
     };
-    expect(contributionLevel(missedOnlyDay, "duration", 8_249)).toBe(1);
-    expect(contributionLevel(missedOnlyDay, "count", 5)).toBe(1);
+    expect(contributionLevel(missedOnlyDay, "duration", 8_249)).toBe(0);
+    expect(contributionLevel(missedOnlyDay, "count", 5)).toBe(0);
   });
 
   it("distinguishes missing coverage from zero events", () => {
