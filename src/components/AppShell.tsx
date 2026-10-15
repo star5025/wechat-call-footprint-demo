@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Navigation />
           <div className="top-actions">
             <span className={`demo-tag ${dataMode === "imported" ? "imported-tag" : ""}`}>{dataMode === "empty" ? "开始使用" : "本地数据"}</span>
-            <button className="round-btn" title="设置" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
+            <button className="round-btn" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
           </div>
         </header>
         <main>{children}</main>

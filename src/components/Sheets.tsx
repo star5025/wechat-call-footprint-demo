@@ -153,7 +153,6 @@ export function Sheets() {
           className={`summary-image-fab ${exportingSummary ? "exporting" : ""}`}
           disabled={wechatScanning || exportingSummary}
           aria-label={`为${summaryContact?.displayName ?? "当前联系人"}导出通话总结长图`}
-          title="导出通话总结长图"
           onClick={() => setExportConfirmOpen(true)}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -220,17 +219,11 @@ export function Sheets() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button className="modal-close" aria-label="取消导出" onClick={() => setExportConfirmOpen(false)}>×</button>
-            <span className="export-confirm-orb" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 3v11m0-11 4 4m-4-4L8 7" />
-                <path d="M5 13v6h14v-6" />
-              </svg>
-            </span>
-            <h2 id="export-confirm-title">导出{summaryContact?.displayName ?? "当前联系人"}的通话总结？</h2>
-            <p id="export-confirm-description">确认后将选择保存位置，并生成一张 PNG 长图。</p>
+            <h2 id="export-confirm-title">导出通话总结？</h2>
+            <p id="export-confirm-description">确认后选择保存位置。</p>
             <div className="dialog-buttons export-confirm-actions">
               <button className="secondary-action" onClick={() => setExportConfirmOpen(false)}>取消</button>
-              <button className="primary-action" onClick={confirmSummaryExport}>选择保存位置</button>
+              <button className="primary-action" onClick={confirmSummaryExport}>确认</button>
             </div>
           </section>
         </div>
