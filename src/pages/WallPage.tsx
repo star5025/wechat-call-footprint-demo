@@ -43,9 +43,7 @@ export function WallPage() {
   const max = Math.max(1, ...wall.days.map((day) => metric === "duration" ? day.durationSeconds : day.connectedCount));
   const lead = (parseDate(range.startDate).getDay() + 6) % 7;
   const weekColumns = Math.max(1, Math.ceil((lead + wall.days.length) / 7));
-  const calendarColumns = mode === "year"
-    ? `repeat(${weekColumns}, var(--wall-cell, 14px))`
-    : `repeat(${weekColumns}, minmax(0, 1fr))`;
+  const calendarColumns = `repeat(${weekColumns}, minmax(0, 1fr))`;
   const monthStarts: Array<{ date: string; column: number }> = [];
   let previousMonth = "";
   wall.days.forEach((day, index) => {
