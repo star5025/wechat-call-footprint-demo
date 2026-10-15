@@ -97,16 +97,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const promptedEmptyRoutes = useRef(new Set<AppRoute>());
   const activeToastTexts = useRef(new Set<string>());
+  const toastQueue = useRef<ToastMessage[]>([]);
+  const currentToast = useRef<ToastMessage | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const showNextToast = useRef<() => void>(() => undefined);
+
+  showNextToast.current = () => {
+    if (currentToast.current || !toastQueue.current.length) return;
+    const next = toastQueue.current.shift()!;
+    currentToast.current = next;
+    setToasts([next]);
+    toastTimer.current = window.setTimeout(() => {
+      activeToastTexts.current.delete(next.text);
+      currentToast.current = null;
+      toastTimer.current = null;
+      setToasts([]);
+      showNextToast.current();
+    }, 3200);
+  };
 
   const notify = useCallback((text: string) => {
     if (activeToastTexts.current.has(text)) return;
     activeToastTexts.current.add(text);
-    const id = ++toastId;
-    setToasts((items) => [...items, { id, text }]);
-    window.setTimeout(() => {
-      activeToastTexts.current.delete(text);
-      setToasts((items) => items.filter((item) => item.id !== id));
-    }, 3200);
+    toastQueue.current.push({ id: ++toastId, text });
+    showNextToast.current();
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastQueue.current = [];
+    currentToast.current = null;
+    activeToastTexts.current.clear();
   }, []);
 
   useEffect(() => {
