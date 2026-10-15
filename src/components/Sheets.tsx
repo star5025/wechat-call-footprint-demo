@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Avatar } from "@/components/ContactAvatar";
 import { useApp } from "@/state/AppContext";
 import { exportJson } from "@/native/bridge";
 import {
@@ -28,6 +29,9 @@ export function Sheets() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const anyOpen = Boolean(selectedEvent || settingsOpen);
+  const selectedContact = selectedEvent?.contactId
+    ? dataset.contacts.find((contact) => contact.id === selectedEvent.contactId)
+    : null;
 
   useEffect(() => {
     if (!anyOpen) return;
@@ -107,7 +111,11 @@ export function Sheets() {
         {selectedEvent && (
           <>
             <div className="sheet-hero">
-              <div className="sheet-avatar">{selectedEvent.contactSnapshot.displayName?.slice(0, 1) ?? "?"}</div>
+              <Avatar
+                avatarRef={selectedContact?.avatarRef}
+                label={selectedEvent.contactSnapshot.displayName ?? "未知联系人"}
+                className="sheet-avatar"
+              />
               <h2>{selectedEvent.contactSnapshot.displayName ?? "未知联系人"} · {mediaLabel(selectedEvent.mediaType)}</h2>
               <p>{selectedEvent.startedAt ? `${formatDate(selectedEvent.startedAt.slice(0, 10))} · ${formatTime(selectedEvent.startedAt)}` : "时间未知"}</p>
             </div>
