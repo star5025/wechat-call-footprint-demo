@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
 import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildInsights, buildWall, filterEvents, summarize } from "@/data/analytics";
 import { useApp } from "@/state/AppContext";
 import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel, pad } from "@/utils/format";
+import { timeGreeting } from "@/utils/greeting";
 
 const formatChartDuration = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
@@ -15,6 +16,11 @@ const formatChartDuration = (seconds: number) => {
 export function HomePage() {
   const { dataset, activeContactId, navigate, openCallsForDate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const events = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const summary = useMemo(() => summarize(events), [events]);
   const recentStart = events.at(-1)?.startedAt?.slice(0, 10) ?? "2026-01-01";
@@ -26,6 +32,9 @@ export function HomePage() {
   const latest = events[0] ?? null;
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
   const contactName = contact?.displayName ?? "联系人";
+  const accountName = dataset.source.kind === "empty"
+    ? "微信用户"
+    : dataset.account.displayName.trim() || "微信用户";
   const hours = Math.floor(summary.totalDurationSeconds / 3600);
   const minutes = Math.floor((summary.totalDurationSeconds % 3600) / 60);
   const videoCount = events.filter((event) => event.mediaType === "video" && (event.connectedDurationSeconds ?? 0) > 0).length;
@@ -34,7 +43,7 @@ export function HomePage() {
   return (
     <section className="view active">
       <header className="welcome">
-        <div><h1>通话概览</h1></div>
+        <div><h1>{timeGreeting(currentHour)}，{accountName}</h1><p>通话概览</p></div>
         <ContactSwitcher />
       </header>
 
