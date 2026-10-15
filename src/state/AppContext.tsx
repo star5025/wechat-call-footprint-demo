@@ -58,7 +58,10 @@ interface AppContextValue {
   dataLoading: DataLoadingState | null;
   dataLoadSuccess: DataLoadSuccess | null;
   toasts: ToastMessage[];
+  callsDateFilter: string | null;
   navigate: (route: AppRoute) => void;
+  openCallsForDate: (date: string) => void;
+  clearCallsDateFilter: () => void;
   selectContact: (contactId: string | null) => void;
   openEvent: (event: CallEvent) => void;
   closeEvent: () => void;
@@ -95,6 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [callsDateFilter, setCallsDateFilter] = useState<string | null>(null);
   const promptedEmptyRoutes = useRef(new Set<AppRoute>());
   const activeToastTexts = useRef(new Set<string>());
   const toastQueue = useRef<ToastMessage[]>([]);
@@ -184,10 +188,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       promptedEmptyRoutes.current.add(nextRoute);
       notify("导入通话记录后可使用完整功能");
     }
+    if (nextRoute === "calls") setCallsDateFilter(null);
     setRoute(nextRoute);
     void persistSettings({ ...settings, lastRoute: nextRoute });
     window.scrollTo({ top: 0, behavior: settings.reducedMotion ? "auto" : "smooth" });
   }, [dataset.events.length, notify, persistSettings, settings]);
+
+  const openCallsForDate = useCallback((date: string) => {
+    setCallsDateFilter(date);
+    setRoute("calls");
+    void persistSettings({ ...settings, lastRoute: "calls" });
+    window.scrollTo({ top: 0, behavior: settings.reducedMotion ? "auto" : "smooth" });
+  }, [persistSettings, settings]);
 
   const selectContact = useCallback((contactId: string | null) => {
     setActiveContactId(contactId);
@@ -373,7 +385,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dataLoading,
     dataLoadSuccess,
     toasts,
+    callsDateFilter,
     navigate,
+    openCallsForDate,
+    clearCallsDateFilter: () => setCallsDateFilter(null),
     selectContact,
     openEvent: setSelectedEvent,
     closeEvent: () => setSelectedEvent(null),
@@ -389,9 +404,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearDataset,
     notify
   }), [
-    activeContactId, appInfo, cancelWechatScan, chooseImport, confirmImport, confirmWechatScan,
+    activeContactId, appInfo, callsDateFilter, cancelWechatScan, chooseImport, confirmImport, confirmWechatScan,
     dataLoadSuccess, dataLoading, dataMode, dataset, importErrors, clearDataset, finishWithoutContact,
-    importPreview, navigate, notify, ready, route, scanConsentOpen, scanWechat, selectContact,
+    importPreview, navigate, notify, openCallsForDate, ready, route, scanConsentOpen, scanWechat, selectContact,
     selectLoadedContact, selectedEvent, settings, settingsOpen, toasts, wechatScanning
   ]);
 

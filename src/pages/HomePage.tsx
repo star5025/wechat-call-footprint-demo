@@ -13,7 +13,7 @@ const formatChartDuration = (seconds: number) => {
 };
 
 export function HomePage() {
-  const { dataset, activeContactId, navigate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
+  const { dataset, activeContactId, navigate, openCallsForDate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
   const events = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const summary = useMemo(() => summarize(events), [events]);
@@ -69,7 +69,7 @@ export function HomePage() {
 
           <section className="soft-panel rhythm-panel">
             <div className="section-heading"><div><span className="section-emoji">📊</span><div><h2>近期接通统计</h2></div></div><div className="soft-tabs"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>次数</button></div></div>
-            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatChartDuration(day.durationSeconds) : String(day.connectedCount); return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metric === "duration" ? `接通时长 ${metricValue}` : `通话 ${metricValue} 次`}`} onClick={() => navigate("wall")}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip">{metricValue}</span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
+            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatChartDuration(day.durationSeconds) : String(day.connectedCount); return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metric === "duration" ? `接通时长 ${metricValue}` : `通话 ${metricValue} 次`}`} onClick={() => openCallsForDate(day.date)}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip">{metricValue}</span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
           </section>
 
           <section className="bottom-row">
