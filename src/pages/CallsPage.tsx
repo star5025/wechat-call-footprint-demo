@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { CallEvent } from "@contracts/models";
 import { ThemeDatePicker } from "@/components/ThemeDatePicker";
+import { ThemeSelect } from "@/components/ThemeSelect";
 import { filterEvents } from "@/data/analytics";
 import {
   applyCallRecordFilters,
@@ -61,9 +62,9 @@ export function CallsPage() {
       {searchOpen && <div className="search-reveal"><span>🔍</span><input autoFocus value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder="搜索日期、联系人或状态" /><button onClick={() => { setSearchOpen(false); setSearch(""); }}>×</button></div>}
 
       <section className="record-filter-panel" aria-label="通话记录筛选">
-        <label><span>时间范围</span><select disabled={Boolean(callsDateFilter)} value={callsDateFilter ? "day" : timeRange} onChange={(event) => setTimeRange(event.target.value as CallsTimeRange)}>{callsDateFilter && <option value="day">当天</option>}<option value="all">全部时间</option><option value="last7">最近 7 天</option><option value="last30">最近 30 天</option><option value="custom">自定义</option></select></label>
-        <label><span>通话时长</span><select value={durationRange} onChange={(event) => setDurationRange(event.target.value as CallsDurationRange)}><option value="all">全部时长</option><option value="under5">5 分钟以内</option><option value="from5to30">5–30 分钟</option><option value="over30">30 分钟以上</option></select></label>
-        <label><span>排序方式</span><select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as CallsSortOrder)}><option value="newest">最新通话优先</option><option value="durationDesc">时长从多到少</option><option value="durationAsc">时长从少到多</option></select></label>
+        <div className="theme-field"><span>时间范围</span><ThemeSelect label="时间范围" disabled={Boolean(callsDateFilter)} value={callsDateFilter ? "day" : timeRange} options={callsDateFilter ? [{ value: "day", label: "当天" }] : [{ value: "all", label: "全部时间" }, { value: "last7", label: "最近 7 天" }, { value: "last30", label: "最近 30 天" }, { value: "custom", label: "自定义" }]} onChange={(value) => setTimeRange(value as CallsTimeRange)} /></div>
+        <div className="theme-field"><span>通话时长</span><ThemeSelect label="通话时长" value={durationRange} options={[{ value: "all", label: "全部时长" }, { value: "under5", label: "5 分钟以内" }, { value: "from5to30", label: "5–30 分钟" }, { value: "over30", label: "30 分钟以上" }]} onChange={(value) => setDurationRange(value as CallsDurationRange)} /></div>
+        <div className="theme-field"><span>排序方式</span><ThemeSelect label="排序方式" value={sortOrder} options={[{ value: "newest", label: "最新通话优先" }, { value: "durationDesc", label: "时长从多到少" }, { value: "durationAsc", label: "时长从少到多" }]} onChange={(value) => setSortOrder(value as CallsSortOrder)} /></div>
         {callsDateFilter && <button className="date-filter-chip" onClick={clearCallsDateFilter}><span>📅 {formatDate(callsDateFilter)}</span><b>×</b></button>}
       </section>
       {!callsDateFilter && timeRange === "custom" && <div className="calls-custom-range"><div className="theme-field"><span>开始日期</span><ThemeDatePicker label="开始日期" value={customStart} max={customEnd || undefined} onChange={setCustomStart} /></div><i>—</i><div className="theme-field"><span>结束日期</span><ThemeDatePicker label="结束日期" value={customEnd} min={customStart || undefined} onChange={setCustomEnd} /></div></div>}

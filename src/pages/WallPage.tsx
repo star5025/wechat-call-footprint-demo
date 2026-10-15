@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { ContributionDay, DateRange } from "@contracts/models";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
 import { ThemeDatePicker, ThemeMonthPicker } from "@/components/ThemeDatePicker";
+import { ThemeSelect } from "@/components/ThemeSelect";
 import { buildWall, contributionLevel, filterEvents, summarize } from "@/data/analytics";
 import type { WallMetric, WallMode } from "@/domain";
 import { useApp } from "@/state/AppContext";
@@ -85,7 +86,7 @@ export function WallPage() {
       </header>
 
       <section className="wall-controls soft-panel">
-        {mode === "year" && <div className="wall-control active"><button className="period-arrow" disabled={year <= 2025} onClick={() => setYear((value) => value - 1)}>‹</button><label><span>年份</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}><option value={2025}>2025 年</option><option value={2026}>2026 年</option></select></label><button className="period-arrow" disabled={year >= 2026} onClick={() => setYear((value) => value + 1)}>›</button></div>}
+        {mode === "year" && <div className="wall-control active"><button className="period-arrow" disabled={year <= 2025} onClick={() => setYear((value) => value - 1)}>‹</button><div className="theme-field wall-theme-field"><span>年份</span><ThemeSelect label="年份" value={String(year)} options={[{ value: "2025", label: "2025 年" }, { value: "2026", label: "2026 年" }]} onChange={(value) => setYear(Number(value))} /></div><button className="period-arrow" disabled={year >= 2026} onClick={() => setYear((value) => value + 1)}>›</button></div>}
         {mode === "month" && <div className="wall-control active"><button className="period-arrow" onClick={() => changeMonth(-1)}>‹</button><div className="theme-field wall-theme-field"><span>月份</span><ThemeMonthPicker label="月份" value={month} min="2025-01" max="2026-12" onChange={setMonth} /></div><button className="period-arrow" onClick={() => changeMonth(1)}>›</button></div>}
         {mode === "custom" && <div className="wall-control custom-control active"><div className="theme-field wall-theme-field"><span>开始</span><ThemeDatePicker label="开始日期" value={start} max={end} onChange={setStart} /></div><i>—</i><div className="theme-field wall-theme-field"><span>结束</span><ThemeDatePicker label="结束日期" value={end} min={start} onChange={setEnd} /></div></div>}
         <div className="wall-metric-toggle"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>按时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>按次数</button></div>
