@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ContributionDay, DateRange } from "@contracts/models";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
 import { ThemeDatePicker, ThemeMonthPicker } from "@/components/ThemeDatePicker";
@@ -104,7 +105,7 @@ export function WallPage() {
         <div className="wall-footnote"><span><b /> 有通话记录</span><span>点击日期查看详情</span><span className={wall.quality.overallState === "partial" ? "quality-pill warning" : "quality-pill"}>{wall.quality.overallState === "partial" ? "部分数据" : "数据完整"}</span></div>
       </section>
 
-      {hoveredDay && hoveredDay.day.connectedCount > 0 && (
+      {hoveredDay && hoveredDay.day.connectedCount > 0 && createPortal(
         <div
           className="wall-hover-card"
           role="tooltip"
@@ -113,7 +114,8 @@ export function WallPage() {
           <strong>{formatDate(hoveredDay.day.date)}</strong>
           <span>{formatDuration(hoveredDay.day.durationSeconds)}</span>
           <small>{hoveredDay.day.connectedCount} 次已接通</small>
-        </div>
+        </div>,
+        document.body
       )}
 
       {selectedDate && selectedEvents.length > 0 && <section className="day-preview soft-panel"><button className="day-preview-close" onClick={() => setSelectedDate(null)}>×</button><div><span className="date-line">{formatDate(selectedDate)}</span><h2>这一天有 {selectedEvents.length} 条记录</h2><p>共计 {formatDuration(selectedEvents.reduce((sum,event) => sum + (event.connectedDurationSeconds ?? 0),0))}</p></div><div className="day-preview-actions">{selectedEvents.slice(0,3).map((event) => <button key={event.id} onClick={() => openEvent(event)}>{event.mediaType === "video" ? "📹" : "🎙️"} {formatDuration(event.connectedDurationSeconds)}</button>)}<button onClick={() => navigate("calls")}>查看全部 →</button></div></section>}
