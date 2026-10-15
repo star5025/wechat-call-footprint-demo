@@ -31,8 +31,10 @@ export function Sheets() {
   } = useApp();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [exportingSummary, setExportingSummary] = useState(false);
-  const anyOpen = Boolean(selectedEvent || settingsOpen);
+  const sheetOpen = Boolean(selectedEvent || settingsOpen);
+  const anyOpen = sheetOpen || exportConfirmOpen;
   const summaryContact = dataset.contacts.find((contact) => contact.id === activeContactId)
     ?? dataset.contacts[0]
     ?? null;
@@ -83,13 +85,17 @@ export function Sheets() {
           if (!deleting) setDeleteConfirmOpen(false);
           return;
         }
+        if (exportConfirmOpen) {
+          setExportConfirmOpen(false);
+          return;
+        }
         closeEvent();
         setSettingsOpen(false);
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeEvent, deleteConfirmOpen, deleting, setSettingsOpen]);
+  }, [closeEvent, deleteConfirmOpen, deleting, exportConfirmOpen, setSettingsOpen]);
 
   const confirmDelete = async () => {
     if (deleting) return;
@@ -134,21 +140,26 @@ export function Sheets() {
     }
   };
 
+  const confirmSummaryExport = () => {
+    setExportConfirmOpen(false);
+    void exportSummaryImage();
+  };
+
   return (
     <>
-      {anyOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
+      {sheetOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
       {dataMode === "imported" && summaryContactId && !anyOpen && (
         <button
           className={`summary-image-fab ${exportingSummary ? "exporting" : ""}`}
           disabled={wechatScanning || exportingSummary}
           aria-label={`为${summaryContact?.displayName ?? "当前联系人"}导出通话总结长图`}
-          onClick={() => void exportSummaryImage()}
+          title="导出通话总结长图"
+          onClick={() => setExportConfirmOpen(true)}
         >
-          <span className="summary-image-fab-icon" aria-hidden="true">{exportingSummary ? "⏳" : "🖼️"}</span>
-          <span className="summary-image-fab-copy">
-            <strong>{exportingSummary ? "正在生成长图" : "导出总结长图"}</strong>
-            <small>{summaryContact?.displayName ?? "当前联系人"}</small>
-          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v11m0-11 4 4m-4-4L8 7" />
+            <path d="M5 13v6h14v-6" />
+          </svg>
         </button>
       )}
       <aside className={`detail-sheet ${selectedEvent ? "open" : ""}`} aria-hidden={!selectedEvent}>
@@ -197,6 +208,33 @@ export function Sheets() {
         </div>
         <div className="local-note"><span>📁</span><p><strong>本地数据</strong><br />当前数据：{dataMode === "empty" ? "尚未连接" : dataset.source.displayName}<br />应用版本：{appInfo?.version ?? "读取中"}</p></div>
       </aside>
+
+      {exportConfirmOpen && (
+        <div className="modal-backdrop export-confirm-backdrop" role="presentation" onMouseDown={() => setExportConfirmOpen(false)}>
+          <section
+            className="export-confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-confirm-title"
+            aria-describedby="export-confirm-description"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="modal-close" aria-label="取消导出" onClick={() => setExportConfirmOpen(false)}>×</button>
+            <span className="export-confirm-orb" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v11m0-11 4 4m-4-4L8 7" />
+                <path d="M5 13v6h14v-6" />
+              </svg>
+            </span>
+            <h2 id="export-confirm-title">导出{summaryContact?.displayName ?? "当前联系人"}的通话总结？</h2>
+            <p id="export-confirm-description">确认后将选择保存位置，并生成一张 PNG 长图。</p>
+            <div className="dialog-buttons export-confirm-actions">
+              <button className="secondary-action" onClick={() => setExportConfirmOpen(false)}>取消</button>
+              <button className="primary-action" onClick={confirmSummaryExport}>选择保存位置</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {deleteConfirmOpen && (
         <div className="modal-backdrop delete-confirm-backdrop" role="presentation" onMouseDown={() => !deleting && setDeleteConfirmOpen(false)}>
