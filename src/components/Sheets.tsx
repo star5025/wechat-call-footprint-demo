@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ContactAvatar";
+import { buildContactCallSummary } from "@/data/contactSummary";
+import { contactSummaryFileName, createContactSummaryPng } from "@/export/contactSummaryImage";
 import { useApp } from "@/state/AppContext";
-import { exportJson } from "@/native/bridge";
+import { exportJson, exportPng } from "@/native/bridge";
 import {
   directionLabel,
   formatDate,
@@ -19,6 +21,7 @@ export function Sheets() {
     setSettingsOpen,
     dataset,
     dataMode,
+    activeContactId,
     chooseImport,
     scanWechat,
     wechatScanning,
@@ -28,7 +31,12 @@ export function Sheets() {
   } = useApp();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportingSummary, setExportingSummary] = useState(false);
   const anyOpen = Boolean(selectedEvent || settingsOpen);
+  const summaryContact = dataset.contacts.find((contact) => contact.id === activeContactId)
+    ?? dataset.contacts[0]
+    ?? null;
+  const summaryContactId = summaryContact?.id ?? null;
   const selectedContact = selectedEvent?.contactId
     ? dataset.contacts.find((contact) => contact.id === selectedEvent.contactId)
     : null;
@@ -103,6 +111,29 @@ export function Sheets() {
     }
   };
 
+  const exportSummaryImage = async () => {
+    if (!summaryContactId || exportingSummary) return;
+    const summary = buildContactCallSummary(dataset, summaryContactId);
+    if (!summary || summary.attemptedCount === 0) {
+      notify("当前联系人还没有可生成总结的通话记录");
+      return;
+    }
+    if (summary.hasBlockingQualityIssues) {
+      notify("当前联系人的记录需要确认，暂时无法生成准确长图");
+      return;
+    }
+    setExportingSummary(true);
+    try {
+      const image = await createContactSummaryPng(summary);
+      const result = await exportPng(contactSummaryFileName(summary), image);
+      if (result) notify(appInfo?.isTauri === false ? "通话总结长图已开始下载" : "通话总结长图已保存");
+    } catch {
+      notify("长图生成失败，请稍后重试");
+    } finally {
+      setExportingSummary(false);
+    }
+  };
+
   return (
     <>
       {anyOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
@@ -141,6 +172,11 @@ export function Sheets() {
           <button className="setting-item" disabled={wechatScanning} onClick={() => void chooseImport()}>
             <span className="setting-icon lavender">📥</span><span><strong>导入通话数据</strong><small>自动扫描不可用时选择 v1 JSON</small></span><i>›</i>
           </button>
+          {dataMode === "imported" && summaryContactId && (
+            <button className="setting-item summary-image-setting" disabled={wechatScanning || exportingSummary} onClick={() => void exportSummaryImage()}>
+              <span className="setting-icon blue-setting">{exportingSummary ? "⏳" : "🖼️"}</span><span><strong>{exportingSummary ? "正在生成总结长图" : "保存联系人通话总结长图"}</strong><small>{exportingSummary ? `正在整理${summaryContact?.displayName ?? "当前联系人"}的通话信息` : `为${summaryContact?.displayName ?? "当前联系人"}生成主题 PNG 图片`}</small></span><i>{exportingSummary ? "请稍候" : "›"}</i>
+            </button>
+          )}
           <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData()}>
             <span className="setting-icon peach">📤</span><span><strong>完整数据导出</strong><small>可重新导入，包含联系人名称</small></span><i>›</i>
           </button>

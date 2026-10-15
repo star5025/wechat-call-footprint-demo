@@ -1,14 +1,18 @@
 mod wechat;
 
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde::Serialize;
 use serde_json::Value;
 use std::{
-    fs,
+    fs::{self, OpenOptions},
+    io::Write,
     path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager};
 
 const MAX_IMPORT_BYTES: u64 = 50 * 1024 * 1024;
+const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
 const SETTINGS_FILE: &str = "settings.json";
 const DATASET_FILE: &str = "dataset.json";
 
@@ -47,13 +51,71 @@ fn config_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(directory)
 }
 
-fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
-    let temporary = path.with_extension("tmp");
-    fs::write(&temporary, content).map_err(|error| error.to_string())?;
-    if path.exists() {
-        fs::remove_file(path).map_err(|error| error.to_string())?;
+fn sibling_work_path(path: &Path, suffix: &str) -> PathBuf {
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("call-footprint");
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    path.parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(format!(
+            ".{name}.{}.{}.{}",
+            std::process::id(),
+            nonce,
+            suffix
+        ))
+}
+
+#[cfg(windows)]
+fn replace_file(source: &Path, target: &Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+    };
+
+    let source_wide: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
+    let target_wide: Vec<u16> = target.as_os_str().encode_wide().chain(Some(0)).collect();
+    let result = unsafe {
+        MoveFileExW(
+            source_wide.as_ptr(),
+            target_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        Err(std::io::Error::last_os_error().to_string())
+    } else {
+        Ok(())
     }
-    fs::rename(&temporary, path).map_err(|error| error.to_string())
+}
+
+#[cfg(not(windows))]
+fn replace_file(source: &Path, target: &Path) -> Result<(), String> {
+    fs::rename(source, target).map_err(|error| error.to_string())
+}
+
+fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
+    let temporary = sibling_work_path(path, "tmp");
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|error| error.to_string())?;
+    if let Err(error) = file.write_all(content).and_then(|_| file.sync_all()) {
+        drop(file);
+        let _ = fs::remove_file(&temporary);
+        return Err(error.to_string());
+    }
+    drop(file);
+
+    replace_file(&temporary, path).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        error
+    })
 }
 
 fn load_json(path: &Path) -> Result<Option<Value>, String> {
@@ -175,6 +237,52 @@ async fn export_json(
     }))
 }
 
+fn is_complete_png(content: &[u8]) -> bool {
+    const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+    const IEND: &[u8] = b"\x00\x00\x00\x00IEND\xaeB\x60\x82";
+    content.len() >= 45
+        && content.starts_with(SIGNATURE)
+        && content.get(12..16) == Some(b"IHDR")
+        && content.ends_with(IEND)
+}
+
+fn decode_png(data_base64: &str) -> Result<Vec<u8>, String> {
+    if data_base64.len() > MAX_IMAGE_BYTES * 4 / 3 + 8 {
+        return Err("生成的图片太大，暂时无法保存。".into());
+    }
+    let content = BASE64_STANDARD
+        .decode(data_base64)
+        .map_err(|_| "生成的图片无法保存，请重新生成。".to_string())?;
+    if content.len() > MAX_IMAGE_BYTES || !is_complete_png(&content) {
+        return Err("生成的图片格式不正确，请重新生成。".into());
+    }
+    Ok(content)
+}
+
+#[tauri::command]
+async fn export_png(
+    suggested_name: String,
+    data_base64: String,
+) -> Result<Option<ExportResult>, String> {
+    let content = decode_png(&data_base64)?;
+    let safe_name = Path::new(&suggested_name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("call-summary.png");
+    let file = rfd::AsyncFileDialog::new()
+        .add_filter("PNG 图片", &["png"])
+        .set_file_name(safe_name)
+        .set_title("保存通话总结长图")
+        .save_file()
+        .await;
+    let Some(file) = file else { return Ok(None) };
+    atomic_write(file.path(), &content)?;
+    Ok(Some(ExportResult {
+        path: file.path().to_string_lossy().to_string(),
+        size_bytes: content.len() as u64,
+    }))
+}
+
 #[tauri::command]
 async fn scan_wechat_calls(app: AppHandle) -> Result<wechat::WechatScanResult, String> {
     let cache_directory = app
@@ -209,6 +317,7 @@ pub fn run() {
             delete_dataset,
             choose_import_file,
             export_json,
+            export_png,
             scan_wechat_calls
         ])
         .run(tauri::generate_context!())
@@ -225,9 +334,28 @@ mod tests {
             std::env::temp_dir().join(format!("call-footprint-test-{}", std::process::id()));
         fs::create_dir_all(&directory).unwrap();
         let path = directory.join("value.json");
+        let unrelated_temporary = directory.join("value.tmp");
+        fs::write(&unrelated_temporary, b"keep").unwrap();
         atomic_write(&path, b"{\"value\":1}").unwrap();
         atomic_write(&path, b"{\"value\":2}").unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "{\"value\":2}");
+        assert_eq!(fs::read(&unrelated_temporary).unwrap(), b"keep");
         let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn decode_png_accepts_complete_png_structure() {
+        let mut png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR".to_vec();
+        png.extend_from_slice(&[0; 17]);
+        png.extend_from_slice(b"\x00\x00\x00\x00IEND\xaeB\x60\x82");
+        let encoded = BASE64_STANDARD.encode(&png);
+        assert_eq!(decode_png(&encoded).unwrap(), png);
+    }
+
+    #[test]
+    fn decode_png_rejects_invalid_or_truncated_content() {
+        assert!(decode_png("not-base64").is_err());
+        assert!(decode_png(&BASE64_STANDARD.encode(b"not-png")).is_err());
+        assert!(decode_png(&BASE64_STANDARD.encode(b"\x89PNG\r\n\x1a\ntruncated")).is_err());
     }
 }

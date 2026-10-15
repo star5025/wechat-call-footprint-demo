@@ -103,6 +103,29 @@ export async function scanWechatCalls(
   }
 }
 
+export async function exportPng(
+  suggestedName: string,
+  image: Blob
+): Promise<ExportResult | null> {
+  if (isTauriRuntime()) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error("无法读取生成的图片。"));
+      reader.readAsDataURL(image);
+    });
+    const dataBase64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    return invoke<ExportResult | null>("export_png", { suggestedName, dataBase64 });
+  }
+  const url = URL.createObjectURL(image);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = suggestedName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  return { path: suggestedName, sizeBytes: image.size };
+}
+
 export async function exportJson(
   suggestedName: string,
   dataset: AppDataset
