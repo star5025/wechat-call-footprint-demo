@@ -10,7 +10,7 @@ mod parser;
 mod windows;
 
 use serde::Serialize;
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 use std::fs;
 use std::{
     path::Path,
@@ -155,10 +155,10 @@ pub struct CoverageInterval {
 
 static SCAN_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 struct SnapshotCleanup(std::path::PathBuf);
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 impl Drop for SnapshotCleanup {
     fn drop(&mut self) {
         for attempt in 0..3 {
@@ -271,7 +271,6 @@ where
 
     #[cfg(target_os = "macos")]
     {
-        let _ = app_cache_dir;
         let emit = |report: &mut F, percent, stage, detail| {
             report(WechatScanProgress {
                 percent,
@@ -317,12 +316,46 @@ where
         } else {
             "尚未找到明确的账号关联记录"
         };
-        Err(format!(
-            "已识别 {app_name} {}（构建 {build}）、{} 个消息数据库和 {} 个密钥元数据文件，{key_status}。macOS 数据库密钥解锁正在适配中；本次没有读取聊天正文，也没有修改微信文件。",
-            installation.version,
-            account.message_databases.len(),
-            key_metadata.database_count
-        ))
+        let Some(manifest_path) = std::env::var_os("CALL_FOOTPRINT_MACOS_KEY_MANIFEST") else {
+            return Err(format!(
+                "已识别 {app_name} {}（构建 {build}）、{} 个消息数据库和 {} 个密钥元数据文件，{key_status}。macOS 数据库密钥初始化尚未完成；本次没有读取聊天正文，也没有修改微信文件。",
+                installation.version,
+                account.message_databases.len(),
+                key_metadata.database_count
+            ));
+        };
+        emit(&mut report, 24, "验证密钥", "正在逐库认证本机私有密钥");
+        let key_material = macos::load_verified_key_manifest(&account, Path::new(&manifest_path))?;
+        emit(
+            &mut report,
+            32,
+            "创建快照",
+            "密钥已验证，正在只读复制微信数据库",
+        );
+        let snapshot = discovery::create_snapshot(&account, app_cache_dir)?;
+        let _cleanup = SnapshotCleanup(snapshot.root.clone());
+        emit(&mut report, 62, "解析记录", "正在解密并解析通话与头像");
+        let parsed =
+            parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)?;
+        emit(
+            &mut report,
+            94,
+            "整理数据",
+            "解析完成，正在生成联系人和通话统计",
+        );
+        let result = WechatScanResult {
+            summary: WechatScanSummary {
+                wechat_version: installation.version,
+                account_label: "当前登录账号".into(),
+                database_shards: snapshot.message_databases.len(),
+                contacts_with_calls: parsed.dataset.contacts.len(),
+                call_events: parsed.dataset.events.len(),
+                warnings: parsed.warnings,
+            },
+            dataset: parsed.dataset,
+        };
+        emit(&mut report, 100, "加载完成", "本机微信通话数据已整理完成");
+        Ok(result)
     }
 }
 

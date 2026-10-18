@@ -44,7 +44,7 @@ impl KeyMaterial {
     pub fn insert_verified_raw_key(
         &mut self,
         database: &Path,
-        raw_key: [u8; KEY_SIZE],
+        raw_key: &[u8; KEY_SIZE],
     ) -> Result<(), String> {
         let page = read_first_page(database)?;
         let salt: [u8; SALT_SIZE] = page[..SALT_SIZE].try_into().unwrap();
@@ -54,7 +54,7 @@ impl KeyMaterial {
         }
         match self {
             Self::RawKeysBySalt(keys) => {
-                keys.insert(salt, Zeroizing::new(raw_key));
+                keys.insert(salt, Zeroizing::new(*raw_key));
                 Ok(())
             }
             Self::AccountPassphrase(_) => Err("账号口令模式不能加入逐库原始密钥。".into()),
@@ -563,10 +563,10 @@ mod tests {
 
         let mut material = KeyMaterial::empty_raw_keyring();
         assert!(material
-            .insert_verified_raw_key(&database, [0x99; KEY_SIZE])
+            .insert_verified_raw_key(&database, &[0x99; KEY_SIZE])
             .is_err());
         material
-            .insert_verified_raw_key(&database, raw_key)
+            .insert_verified_raw_key(&database, &raw_key)
             .unwrap();
         assert_eq!(material.raw_key_count(), 1);
         let _ = fs::remove_dir_all(directory);

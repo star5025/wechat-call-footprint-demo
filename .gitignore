@@ -25,6 +25,8 @@ src-tauri/target/
 .env.*
 !.env.example
 fixtures/private/
+.wechat-local/
+wechat-keys*.json
 *.key
 *.pem
 

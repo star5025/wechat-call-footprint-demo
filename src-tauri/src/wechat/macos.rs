@@ -1,11 +1,14 @@
 use super::discovery::WechatAccount;
 use md5::{Digest, Md5};
 use rusqlite::{Connection, OpenFlags};
+use serde::Deserialize;
 use std::{
+    collections::HashMap,
     env, fs,
     path::{Path, PathBuf},
     process::Command,
 };
+use zeroize::{Zeroize, Zeroizing};
 
 const WECHAT_BUNDLE_ID: &str = "com.tencent.xinWeChat";
 
@@ -20,6 +23,16 @@ pub struct WechatInstallation {
 pub struct KeyMetadataSummary {
     pub database_count: usize,
     pub matching_records: usize,
+}
+
+#[derive(Deserialize)]
+struct PrivateKeyManifest {
+    keys: HashMap<String, PrivateKeyEntry>,
+}
+
+#[derive(Deserialize)]
+struct PrivateKeyEntry {
+    enc_key: String,
 }
 
 pub fn find_wechat_installation() -> Result<WechatInstallation, String> {
@@ -95,6 +108,78 @@ pub fn inspect_key_metadata(account: &WechatAccount) -> Result<KeyMetadataSummar
     })
 }
 
+pub fn load_verified_key_manifest(
+    account: &WechatAccount,
+    manifest_path: &Path,
+) -> Result<super::crypto::KeyMaterial, String> {
+    let manifest_bytes = Zeroizing::new(
+        fs::read(manifest_path).map_err(|error| format!("无法读取私有密钥清单：{error}"))?,
+    );
+    if manifest_bytes.len() > 1024 * 1024 {
+        return Err("私有密钥清单超过 1 MB 安全限制。".into());
+    }
+    let mut manifest: PrivateKeyManifest = serde_json::from_slice(&manifest_bytes)
+        .map_err(|_| "私有密钥清单格式无效。".to_string())?;
+    let database_root = account
+        .contact_database
+        .parent()
+        .and_then(Path::parent)
+        .ok_or_else(|| "无法确定账号数据库目录。".to_string())?;
+    let required = required_databases(account, database_root)?;
+    let mut keyring = super::crypto::KeyMaterial::empty_raw_keyring();
+
+    for (relative, database) in required {
+        let entry = manifest
+            .keys
+            .get_mut(&relative)
+            .ok_or_else(|| format!("私有密钥清单缺少数据库：{relative}"))?;
+        let decoded = Zeroizing::new(
+            hex::decode(&entry.enc_key)
+                .map_err(|_| format!("数据库 {relative} 的密钥编码无效。"))?,
+        );
+        entry.enc_key.zeroize();
+        let raw_key: [u8; 32] = decoded
+            .as_slice()
+            .try_into()
+            .map_err(|_| format!("数据库 {relative} 的密钥长度无效。"))?;
+        let raw_key = Zeroizing::new(raw_key);
+        keyring
+            .insert_verified_raw_key(database, &raw_key)
+            .map_err(|_| format!("数据库 {relative} 的密钥认证失败。"))?;
+    }
+    Ok(keyring)
+}
+
+fn required_databases<'a>(
+    account: &'a WechatAccount,
+    database_root: &Path,
+) -> Result<Vec<(String, &'a Path)>, String> {
+    let mut databases = vec![account.contact_database.as_path()];
+    databases.extend(account.message_databases.iter().map(PathBuf::as_path));
+    if let Some(head_image) = account.head_image_database.as_deref() {
+        databases.push(head_image);
+    }
+    databases
+        .into_iter()
+        .map(|database| {
+            let relative = database
+                .strip_prefix(database_root)
+                .map_err(|_| "数据库路径超出当前账号目录。".to_string())?;
+            if relative
+                .components()
+                .any(|component| !matches!(component, std::path::Component::Normal(_)))
+            {
+                return Err("数据库相对路径无效。".into());
+            }
+            let relative = relative
+                .to_str()
+                .ok_or_else(|| "数据库路径不是有效文本。".to_string())?
+                .to_owned();
+            Ok((relative, database))
+        })
+        .collect()
+}
+
 fn account_hash_candidates(account: &WechatAccount) -> Vec<String> {
     [account.account_name.as_str(), account.account_wxid.as_str()]
         .into_iter()
@@ -147,6 +232,35 @@ mod tests {
         assert_eq!(hashes.len(), 2);
         assert!(hashes.iter().all(|hash| hash.len() == 32));
         assert!(hashes.iter().all(|hash| !hash.contains("wxid")));
+    }
+
+    #[test]
+    fn rejects_a_manifest_that_does_not_cover_required_databases() {
+        let directory = std::env::temp_dir().join(format!(
+            "call-footprint-manifest-test-{}",
+            std::process::id()
+        ));
+        let contact = directory.join("db_storage/contact/contact.db");
+        let message = directory.join("db_storage/message/message_0.db");
+        fs::create_dir_all(contact.parent().unwrap()).unwrap();
+        fs::create_dir_all(message.parent().unwrap()).unwrap();
+        fs::write(&contact, [0u8; 4096]).unwrap();
+        fs::write(&message, [0u8; 4096]).unwrap();
+        let manifest = directory.join("keys.json");
+        fs::write(&manifest, br#"{"keys":{}}"#).unwrap();
+        let account = WechatAccount {
+            account_name: "account".into(),
+            account_wxid: "wxid_example".into(),
+            message_databases: vec![message],
+            contact_database: contact,
+            head_image_database: None,
+        };
+        let error = match load_verified_key_manifest(&account, &manifest) {
+            Ok(_) => panic!("incomplete manifest should be rejected"),
+            Err(error) => error,
+        };
+        assert!(error.contains("contact/contact.db"));
+        let _ = fs::remove_dir_all(directory);
     }
 
     #[test]
