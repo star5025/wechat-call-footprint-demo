@@ -83,6 +83,17 @@ macOS 开发版可通过环境变量 `CALL_FOOTPRINT_MACOS_KEY_MANIFEST` 指向�
 
 这只是开发接口，不会自动提取密钥。正常启动的正式应用在安全初始化方案完成前仍会拒绝 macOS 自动扫描。
 
+首次初始化可使用 `scripts/macos/bootstrap_keys.py`。它只支持原生 Apple Silicon：要求先从微信菜单正常退出，然后把原版复制到私有状态目录、仅重签临时副本，并由 LLDB 启动该副本。捕获器只接受与所选数据库盐值匹配的 PBKDF2 参数，且必须通过对应数据库首页 HMAC 验证；不会附加现有微信进程，也不会输出密钥。示例：
+
+```shell
+python3 scripts/macos/bootstrap_keys.py \
+  --db-root '/本人账号目录/db_storage' \
+  --state-dir scripts/macos/.private-bootstrap-001 \
+  --acknowledge-debug-copy
+```
+
+临时窗口可能要求手机确认或重新登录。该窗口只用于初始化，不要在里面编辑消息或草稿。完成后脚本会终止自己启动的副本、禁用临时应用入口、验证原版签名未变化并重新启动原版；生成的 `keys.json` 权限为 `0600`，状态目录已被 Git 忽略。取钥方式改编自 MIT 许可的 macOS WeChat 4.x local toolkit，完整声明见 `scripts/macos/NOTICE.md`。
+
 ## 工程结构
 
 ```text

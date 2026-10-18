@@ -27,6 +27,7 @@ src-tauri/target/
 fixtures/private/
 .wechat-local/
 wechat-keys*.json
+scripts/macos/.private-bootstrap-*/
 *.key
 *.pem
 
