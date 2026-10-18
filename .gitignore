@@ -12,6 +12,7 @@ desktop.ini
 *.log
 *.tmp
 *.temp
+__pycache__/
 
 # Future Node/Tauri build outputs
 node_modules/
