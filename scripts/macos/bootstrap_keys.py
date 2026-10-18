@@ -37,6 +37,15 @@ def main():
         raise RuntimeError("native Apple Silicon macOS is required")
     if os.geteuid() == 0:
         raise RuntimeError("do not run this helper with sudo")
+    developer_mode = subprocess.run(
+        ["/usr/sbin/DevToolsSecurity", "-status"], capture_output=True, text=True
+    )
+    developer_status = (developer_mode.stdout + developer_mode.stderr).lower()
+    if developer_mode.returncode or "enabled" not in developer_status:
+        raise RuntimeError(
+            "macOS developer mode is disabled; run `sudo DevToolsSecurity -enable` "
+            "in Terminal, then retry without sudo"
+        )
     if subprocess.run(["pgrep", "-x", "WeChat"], capture_output=True).returncode == 0:
         raise RuntimeError("quit WeChat normally first; no process was stopped")
 
@@ -62,6 +71,11 @@ def main():
     environment = {**os.environ, "PYTHONPATH": lldb_python}
 
     run(["ditto", str(application), str(temporary_app)])
+    # Finder metadata and quarantine/resource-fork xattrs are not executable
+    # content and can make ad-hoc signing of nested helpers fail. Only strip
+    # them from the private copy; the original bundle remains untouched.
+    run(["chmod", "-R", "u+w", str(temporary_app)])
+    run(["xattr", "-cr", str(temporary_app)])
     run(["codesign", "--force", "--deep", "--sign", "-", str(temporary_app)])
     run(["codesign", "--verify", "--deep", "--strict", str(temporary_app)])
     emit(
