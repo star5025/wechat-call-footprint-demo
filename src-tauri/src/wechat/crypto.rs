@@ -7,6 +7,7 @@ use pbkdf2::pbkdf2_hmac;
 use rusqlite::{Connection, OpenFlags};
 use sha2::Sha512;
 use std::{
+    collections::HashMap,
     fs,
     io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
@@ -24,6 +25,63 @@ type HmacSha512 = Hmac<Sha512>;
 struct DatabaseKeys {
     encryption: Zeroizing<[u8; KEY_SIZE]>,
     authentication: Zeroizing<[u8; KEY_SIZE]>,
+}
+
+pub enum KeyMaterial {
+    AccountPassphrase(Zeroizing<Vec<u8>>),
+    RawKeysBySalt(HashMap<[u8; SALT_SIZE], Zeroizing<[u8; KEY_SIZE]>>),
+}
+
+impl KeyMaterial {
+    pub fn account_passphrase(passphrase: Vec<u8>) -> Self {
+        Self::AccountPassphrase(Zeroizing::new(passphrase))
+    }
+
+    pub fn empty_raw_keyring() -> Self {
+        Self::RawKeysBySalt(HashMap::new())
+    }
+
+    pub fn insert_verified_raw_key(
+        &mut self,
+        database: &Path,
+        raw_key: [u8; KEY_SIZE],
+    ) -> Result<(), String> {
+        let page = read_first_page(database)?;
+        let salt: [u8; SALT_SIZE] = page[..SALT_SIZE].try_into().unwrap();
+        let keys = derive_database_keys_from_raw(&raw_key, &salt);
+        if !verify_page_hmac(&keys.authentication, &page, 1) {
+            return Err("候选数据库密钥未通过首页认证。".into());
+        }
+        match self {
+            Self::RawKeysBySalt(keys) => {
+                keys.insert(salt, Zeroizing::new(raw_key));
+                Ok(())
+            }
+            Self::AccountPassphrase(_) => Err("账号口令模式不能加入逐库原始密钥。".into()),
+        }
+    }
+
+    pub fn raw_key_count(&self) -> usize {
+        match self {
+            Self::RawKeysBySalt(keys) => keys.len(),
+            Self::AccountPassphrase(_) => 0,
+        }
+    }
+
+    fn resolve(&self, salt: &[u8]) -> Result<DatabaseKeys, String> {
+        match self {
+            Self::AccountPassphrase(passphrase) => Ok(derive_database_keys(passphrase, salt)),
+            Self::RawKeysBySalt(keys) => {
+                let salt: [u8; SALT_SIZE] = salt
+                    .try_into()
+                    .map_err(|_| "数据库盐值长度无效。".to_string())?;
+                let raw_key = keys
+                    .get(&salt)
+                    .ok_or_else(|| "当前数据库没有经过验证的 macOS 密钥。".to_string())?;
+                Ok(derive_database_keys_from_raw(raw_key, &salt))
+            }
+        }
+    }
 }
 
 pub struct PreparedDatabase {
@@ -123,7 +181,7 @@ fn verify_page_hmac(
 pub fn prepare_plaintext_database(
     source: &Path,
     destination_dir: &Path,
-    passphrase: &[u8],
+    key_material: &KeyMaterial,
 ) -> Result<PreparedDatabase, String> {
     fs::create_dir_all(destination_dir)
         .map_err(|error| format!("无法创建临时解密目录：{error}"))?;
@@ -134,7 +192,7 @@ pub fn prepare_plaintext_database(
     let building = destination.with_extension("db.building");
     let _ = fs::remove_file(&building);
 
-    decrypt_main_database(source, &building, passphrase)?;
+    decrypt_main_database(source, &building, key_material)?;
     if !quick_check(&building) {
         let _ = fs::remove_file(&building);
         return Err("数据库主文件解密后未通过完整性校验。".into());
@@ -146,8 +204,8 @@ pub fn prepare_plaintext_database(
             .map(|item| item.len() > 32)
             .unwrap_or(false)
     {
-        if merge_wal(&building, &wal, source, passphrase).is_err() || !quick_check(&building) {
-            decrypt_main_database(source, &building, passphrase)?;
+        if merge_wal(&building, &wal, source, key_material).is_err() || !quick_check(&building) {
+            decrypt_main_database(source, &building, key_material)?;
             wal_omitted = true;
         }
     }
@@ -179,7 +237,7 @@ pub fn open_plaintext_database(path: &Path) -> Result<Connection, String> {
 fn decrypt_main_database(
     source: &Path,
     destination: &Path,
-    passphrase: &[u8],
+    key_material: &KeyMaterial,
 ) -> Result<(), String> {
     let mut input =
         fs::File::open(source).map_err(|error| format!("无法读取数据库快照：{error}"))?;
@@ -187,7 +245,7 @@ fn decrypt_main_database(
     input
         .read_exact(&mut first_page)
         .map_err(|_| "数据库首页不完整。".to_string())?;
-    let keys = derive_database_keys(passphrase, &first_page[..SALT_SIZE]);
+    let keys = key_material.resolve(&first_page[..SALT_SIZE])?;
     if !verify_page_hmac(&keys.authentication, &first_page, 1) {
         return Err("数据库首页认证失败。".into());
     }
@@ -232,6 +290,11 @@ fn decrypt_main_database(
 fn derive_database_keys(passphrase: &[u8], salt: &[u8]) -> DatabaseKeys {
     let mut encryption = Zeroizing::new([0u8; KEY_SIZE]);
     pbkdf2_hmac::<Sha512>(passphrase, salt, PBKDF2_ROUNDS, encryption.as_mut());
+    derive_database_keys_from_raw(&encryption, salt)
+}
+
+fn derive_database_keys_from_raw(raw_key: &[u8; KEY_SIZE], salt: &[u8]) -> DatabaseKeys {
+    let encryption = Zeroizing::new(*raw_key);
     let mac_salt = salt.iter().map(|byte| byte ^ 0x3a).collect::<Vec<_>>();
     let mut authentication = Zeroizing::new([0u8; KEY_SIZE]);
     pbkdf2_hmac::<Sha512>(&encryption[..], &mac_salt, 2, authentication.as_mut());
@@ -288,10 +351,10 @@ fn merge_wal(
     database: &Path,
     wal_path: &Path,
     encrypted_source: &Path,
-    passphrase: &[u8],
+    key_material: &KeyMaterial,
 ) -> Result<(), String> {
     let source_page = read_first_page(encrypted_source)?;
-    let keys = derive_database_keys(passphrase, &source_page[..SALT_SIZE]);
+    let keys = key_material.resolve(&source_page[..SALT_SIZE])?;
     let mut wal =
         fs::File::open(wal_path).map_err(|error| format!("无法读取 WAL 快照：{error}"))?;
     let mut header = [0u8; 32];
@@ -463,5 +526,49 @@ mod tests {
             wal_checksum(&bytes, false, (0, 0)),
             (0x0102_0304, 0x0608_0a0c)
         );
+    }
+
+    #[test]
+    fn raw_keyring_derives_the_same_page_keys_as_a_passphrase() {
+        let salt = [0x31; SALT_SIZE];
+        let expected = derive_database_keys(b"test-passphrase", &salt);
+        let mut raw_keys = HashMap::new();
+        raw_keys.insert(salt, Zeroizing::new(*expected.encryption));
+        let material = KeyMaterial::RawKeysBySalt(raw_keys);
+        let actual = material.resolve(&salt).unwrap();
+        assert_eq!(&*actual.encryption, &*expected.encryption);
+        assert_eq!(&*actual.authentication, &*expected.authentication);
+    }
+
+    #[test]
+    fn raw_keyring_accepts_only_a_key_authenticated_by_the_database() {
+        let salt = [0x52; SALT_SIZE];
+        let raw_key = [0x27; KEY_SIZE];
+        let keys = derive_database_keys_from_raw(&raw_key, &salt);
+        let mut page = [0u8; PAGE_SIZE];
+        page[..SALT_SIZE].copy_from_slice(&salt);
+        let mut mac = <HmacSha512 as Mac>::new_from_slice(&*keys.authentication).unwrap();
+        let mac_end = PAGE_SIZE - RESERVE_SIZE + 16;
+        mac.update(&page[SALT_SIZE..mac_end]);
+        mac.update(&1u32.to_le_bytes());
+        page[mac_end..].copy_from_slice(&mac.finalize().into_bytes());
+
+        let directory = std::env::temp_dir().join(format!(
+            "call-footprint-keyring-test-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&directory).unwrap();
+        let database = directory.join("fixture.db");
+        fs::write(&database, page).unwrap();
+
+        let mut material = KeyMaterial::empty_raw_keyring();
+        assert!(material
+            .insert_verified_raw_key(&database, [0x99; KEY_SIZE])
+            .is_err());
+        material
+            .insert_verified_raw_key(&database, raw_key)
+            .unwrap();
+        assert_eq!(material.raw_key_count(), 1);
+        let _ = fs::remove_dir_all(directory);
     }
 }

@@ -16,8 +16,6 @@ use std::{
     path::Path,
     sync::{Mutex, OnceLock},
 };
-#[cfg(windows)]
-use zeroize::Zeroizing;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -238,11 +236,9 @@ where
             "验证密钥",
             "正在从微信内存中查找并验证数据库密钥",
         );
-        let key = Zeroizing::new(windows::recover_account_key(
-            &installation,
-            &snapshot.validation_database,
-            &xor_keys,
-        )?);
+        let key =
+            windows::recover_account_key(&installation, &snapshot.validation_database, &xor_keys)?;
+        let key_material = crypto::KeyMaterial::account_passphrase(key);
         emit(
             &mut report,
             62,
@@ -250,7 +246,8 @@ where
             "密钥已验证，正在解密并解析通话与头像",
         );
 
-        let parsed = parser::parse_snapshot(&snapshot, &account, &key, &installation.version)?;
+        let parsed =
+            parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)?;
         emit(
             &mut report,
             94,

@@ -47,7 +47,7 @@ struct ParsedCall {
 pub fn parse_snapshot(
     snapshot: &WechatSnapshot,
     account: &WechatAccount,
-    passphrase: &[u8],
+    key_material: &crypto::KeyMaterial,
     wechat_version: &str,
 ) -> Result<ParsedSnapshot, String> {
     let normalized_at = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
@@ -55,7 +55,7 @@ pub fn parse_snapshot(
     let source_id = opaque_hash("source", account.account_name.as_bytes());
     let plaintext_dir = snapshot.root.join("plaintext");
     let (contacts, contact_wal_omitted) =
-        load_contacts(&snapshot.contact_database, &plaintext_dir, passphrase)?;
+        load_contacts(&snapshot.contact_database, &plaintext_dir, key_material)?;
     let account_display_name = resolve_account_display_name(account, &contacts);
     let mut warnings = Vec::new();
     let mut parsed_calls = Vec::new();
@@ -67,7 +67,7 @@ pub fn parse_snapshot(
         match parse_message_database(
             database,
             &plaintext_dir,
-            passphrase,
+            key_material,
             account,
             &contacts,
             &account_id,
@@ -110,7 +110,7 @@ pub fn parse_snapshot(
     avatar_usernames.insert(account.account_wxid.as_str());
     let (avatars, avatar_wal_omitted) = match snapshot.head_image_database.as_ref() {
         Some(database) => {
-            match load_local_avatars(database, &plaintext_dir, passphrase, &avatar_usernames) {
+            match load_local_avatars(database, &plaintext_dir, key_material, &avatar_usernames) {
                 Ok(result) => result,
                 Err(_) => {
                     warnings.push("本机头像库暂时无法解析，已使用联系人首字占位。".into());
@@ -212,9 +212,9 @@ pub fn parse_snapshot(
 fn load_contacts(
     path: &std::path::Path,
     plaintext_dir: &std::path::Path,
-    passphrase: &[u8],
+    key_material: &crypto::KeyMaterial,
 ) -> Result<(HashMap<String, ContactRecord>, bool), String> {
-    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, passphrase)?;
+    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, key_material)?;
     let connection = crypto::open_plaintext_database(&plaintext.path)?;
     let mut statement = connection
         .prepare("SELECT username, alias, nick_name, remark, local_type FROM contact WHERE username IS NOT NULL")
@@ -255,10 +255,10 @@ fn load_contacts(
 fn load_local_avatars(
     path: &std::path::Path,
     plaintext_dir: &std::path::Path,
-    passphrase: &[u8],
+    key_material: &crypto::KeyMaterial,
     usernames: &HashSet<&str>,
 ) -> Result<(HashMap<String, String>, bool), String> {
-    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, passphrase)?;
+    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, key_material)?;
     let connection = crypto::open_plaintext_database(&plaintext.path)?;
     let mut statement = connection
         .prepare("SELECT username, image_buffer FROM head_image WHERE username IS NOT NULL AND image_buffer IS NOT NULL")
@@ -304,7 +304,7 @@ fn avatar_data_url(image: &[u8]) -> Option<String> {
 fn parse_message_database(
     path: &std::path::Path,
     plaintext_dir: &std::path::Path,
-    passphrase: &[u8],
+    key_material: &crypto::KeyMaterial,
     account: &WechatAccount,
     contacts: &HashMap<String, ContactRecord>,
     account_id: &str,
@@ -312,7 +312,7 @@ fn parse_message_database(
     normalized_at: &str,
     dedup: &mut HashSet<String>,
 ) -> Result<(Vec<ParsedCall>, bool), String> {
-    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, passphrase)?;
+    let plaintext = crypto::prepare_plaintext_database(path, plaintext_dir, key_material)?;
     let connection = crypto::open_plaintext_database(&plaintext.path)?;
     let sender_names = load_name2id(&connection)?;
     let self_identity_confirmed = sender_names
