@@ -1,15 +1,22 @@
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 mod crypto;
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 mod discovery;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 mod parser;
 #[cfg(windows)]
 mod windows;
 
 use serde::Serialize;
+#[cfg(windows)]
+use std::fs;
 use std::{
-    fs,
     path::Path,
     sync::{Mutex, OnceLock},
 };
+#[cfg(windows)]
 use zeroize::Zeroizing;
 
 #[derive(Debug, Serialize)]
@@ -150,8 +157,10 @@ pub struct CoverageInterval {
 
 static SCAN_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+#[cfg(windows)]
 struct SnapshotCleanup(std::path::PathBuf);
 
+#[cfg(windows)]
 impl Drop for SnapshotCleanup {
     fn drop(&mut self) {
         for attempt in 0..3 {
@@ -174,8 +183,8 @@ pub fn scan_with_progress<F>(
 where
     F: FnMut(WechatScanProgress),
 {
-    #[cfg(not(windows))]
-    return Err("当前自动扫描仅支持 Windows 微信 4.x。".into());
+    #[cfg(not(any(windows, target_os = "macos")))]
+    return Err("当前自动扫描仅支持 Windows 和 macOS 微信 4.x。".into());
 
     #[cfg(windows)]
     {
@@ -261,6 +270,62 @@ where
         };
         emit(&mut report, 100, "加载完成", "本机微信通话数据已整理完成");
         Ok(result)
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app_cache_dir;
+        let emit = |report: &mut F, percent, stage, detail| {
+            report(WechatScanProgress {
+                percent,
+                stage,
+                detail,
+            });
+        };
+        let lock = SCAN_LOCK.get_or_init(|| Mutex::new(()));
+        let _guard = lock
+            .try_lock()
+            .map_err(|_| "已有微信扫描正在进行，请等待完成。".to_string())?;
+
+        emit(&mut report, 3, "定位微信", "正在确认本机微信版本");
+        let installation = macos::find_wechat_installation()?;
+        if installation.version != "4.1.13" {
+            return Err(format!(
+                "当前 macOS 微信版本 {} 尚未通过安全适配验证，暂不自动读取。",
+                installation.version
+            ));
+        }
+        emit(
+            &mut report,
+            10,
+            "定位数据",
+            "微信版本已确认，正在查找账号数据",
+        );
+        let account = discovery::discover_active_account()?;
+        emit(
+            &mut report,
+            18,
+            "验证适配器",
+            "正在只读检查数据库密钥元数据",
+        );
+        let key_metadata = macos::inspect_key_metadata(&account)?;
+        let build = installation.build.as_deref().unwrap_or("未知");
+        let app_name = installation
+            .app_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("WeChat.app");
+        let key_status = if key_metadata.matching_records > 0 {
+            "已找到当前账号关联记录"
+        } else {
+            "尚未找到明确的账号关联记录"
+        };
+        Err(format!(
+            "已识别 {app_name} {}（构建 {build}）、{} 个消息数据库和 {} 个密钥元数据文件，{key_status}。macOS 数据库密钥解锁正在适配中；本次没有读取聊天正文，也没有修改微信文件。",
+            installation.version,
+            account.message_databases.len(),
+            key_metadata.database_count
+        ))
     }
 }
 

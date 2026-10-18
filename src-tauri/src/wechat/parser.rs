@@ -13,7 +13,12 @@ use std::{
     io::Read,
 };
 
+#[cfg(windows)]
 const ADAPTER_ID: &str = "wechat-windows-4x";
+#[cfg(target_os = "macos")]
+const ADAPTER_ID: &str = "wechat-macos-4x";
+#[cfg(not(any(windows, target_os = "macos")))]
+const ADAPTER_ID: &str = "wechat-unsupported";
 const ADAPTER_VERSION: &str = "0.2.0";
 const PARSER_VERSION: &str = "1.1.0";
 const DEDUP_VERSION: &str = "1.0.0";

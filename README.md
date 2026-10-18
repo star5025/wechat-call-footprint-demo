@@ -21,6 +21,8 @@
 
 v0.5.0 已接入首个严格版本化的 Windows 适配器，仅支持经过本机验证的微信 **4.1.15.13**。扫描前会明确说明并征得同意；后端只以 `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ` 权限读取微信进程，不注入、不挂钩、不写回微信。数据库和 WAL 先复制为一致快照，再逐页认证、临时解密并只读解析；密钥不落盘、不进入前端，临时副本正常结束后删除。未知微信版本会拒绝自动读取，可继续使用 Contract v1 JSON 导入。
 
+macOS 适配器正在开发，界面和 Contract v1 与 Windows 版保持一致。当前已支持微信 **4.1.13** 的应用版本识别、沙盒数据目录发现、多账号活跃度判断和 `key_info.db` 只读元数据验证；数据库密钥解锁与端到端解析尚未完成，因此暂不作为正式可用版本发布。
+
 ## Windows 安装
 
 发布目录包含：
@@ -35,15 +37,15 @@ v0.5.0 已接入首个严格版本化的 Windows 适配器，仅支持经过本�
 
 ### 环境
 
-- Windows 10/11 x64；
+- Windows 10/11 x64，或 macOS 12+（Apple Silicon）；
 - Node.js 20+；
-- Rust stable（MSVC）；
-- Visual Studio 2022 Build Tools，包含 Desktop development with C++；
-- Microsoft Edge WebView2 Runtime。
+- Rust stable；
+- Windows：Visual Studio 2022 Build Tools 和 Microsoft Edge WebView2 Runtime；
+- macOS：Xcode Command Line Tools。
 
 ### 命令
 
-```powershell
+```shell
 npm ci
 npm run check
 npm run tauri:dev
@@ -59,7 +61,7 @@ npm run tauri:build
 
 Rust 测试：
 
-```powershell
+```shell
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
@@ -69,7 +71,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 src/                    React + TypeScript 桌面 UI
 src/data/               数据聚合、导入校验和测试 fixture
 src/native/             Tauri IPC / 浏览器预览桥接层
-src-tauri/              Rust 本地能力与 Windows 打包配置
+src-tauri/              Rust 本地能力与 Windows/macOS 打包配置
 contracts/v1/           稳定的领域类型、JSON Schema 和示例
 docs/                   产品、架构、隐私和测试基线
 prototype/v0.3/         已确认视觉方向的静态原型快照

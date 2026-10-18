@@ -47,38 +47,59 @@ pub fn discover_active_account() -> Result<WechatAccount, String> {
     }
     accounts.sort_by_key(latest_message_time);
     accounts.pop().ok_or_else(|| {
-        "没有找到微信 4.x 聊天数据库。请先登录桌面微信，并确认聊天记录保存在当前 Windows 用户的文档目录。".into()
+        "没有找到微信 4.x 聊天数据库。请先登录桌面微信，并确认应用能够读取微信数据目录。".into()
     })
 }
 
 fn candidate_data_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    if let Some(profile) = env::var_os("USERPROFILE") {
-        roots.push(
-            PathBuf::from(&profile)
-                .join("Documents")
-                .join("xwechat_files"),
-        );
+    if let Some(configured) = env::var_os("CALL_FOOTPRINT_WECHAT_DATA_DIR") {
+        add_root_variants(&PathBuf::from(configured), &mut roots);
     }
-    if let Some(one_drive) = env::var_os("OneDrive") {
-        roots.push(
-            PathBuf::from(one_drive)
-                .join("Documents")
-                .join("xwechat_files"),
-        );
-    }
-    for variable in ["APPDATA", "LOCALAPPDATA"] {
-        let Some(base) = env::var_os(variable).map(PathBuf::from) else {
-            continue;
-        };
-        for directory in [
-            base.join("Tencent").join("xwechat"),
-            base.join("Tencent").join("xwechat").join("config"),
-            base.join("Tencent").join("WeChat"),
-        ] {
-            collect_config_paths(&directory, &mut roots);
+
+    #[cfg(windows)]
+    {
+        if let Some(profile) = env::var_os("USERPROFILE") {
+            roots.push(
+                PathBuf::from(&profile)
+                    .join("Documents")
+                    .join("xwechat_files"),
+            );
+        }
+        if let Some(one_drive) = env::var_os("OneDrive") {
+            roots.push(
+                PathBuf::from(one_drive)
+                    .join("Documents")
+                    .join("xwechat_files"),
+            );
+        }
+        for variable in ["APPDATA", "LOCALAPPDATA"] {
+            let Some(base) = env::var_os(variable).map(PathBuf::from) else {
+                continue;
+            };
+            for directory in [
+                base.join("Tencent").join("xwechat"),
+                base.join("Tencent").join("xwechat").join("config"),
+                base.join("Tencent").join("WeChat"),
+            ] {
+                collect_config_paths(&directory, &mut roots);
+            }
         }
     }
+
+    #[cfg(target_os = "macos")]
+    if let Some(home) = env::var_os("HOME") {
+        roots.push(
+            PathBuf::from(home)
+                .join("Library")
+                .join("Containers")
+                .join("com.tencent.xinWeChat")
+                .join("Data")
+                .join("Documents")
+                .join("xwechat_files"),
+        );
+    }
+
     roots.retain(|path| path.is_dir());
     roots.sort();
     roots.dedup();

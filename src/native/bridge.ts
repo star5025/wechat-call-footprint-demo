@@ -91,7 +91,7 @@ export async function scanWechatCalls(
   onProgress?: (progress: WechatScanProgress) => void
 ): Promise<WechatScanResult> {
   if (!isTauriRuntime()) {
-    throw new Error("自动扫描仅在 Windows 桌面版中可用。");
+    throw new Error("自动扫描仅在 Windows 或 macOS 桌面版中可用。");
   }
   const unlisten = onProgress
     ? await listen<WechatScanProgress>("wechat-scan-progress", (event) => onProgress(event.payload))
