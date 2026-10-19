@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildWall, filterEvents, isConnected, localDate, summarize } from "@/data/analytics";
 import { favoriteCallPeriod } from "@/data/contactSummary";
@@ -7,6 +8,10 @@ import { useApp } from "@/state/AppContext";
 import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel, pad } from "@/utils/format";
 import { timeGreeting } from "@/utils/greeting";
 import { isPagesDemo } from "@/runtime";
+
+const formatCount = (value: number | null) => String(value ?? 0);
+const formatTotalMinutes = (value: number | null) => `${Math.floor((value ?? 0) / 60)}小时 ${(value ?? 0) % 60}分`;
+const formatMeanDuration = (value: number | null) => formatCompactDuration(value ?? 0);
 
 const formatChartDuration = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
@@ -16,7 +21,7 @@ const formatChartDuration = (seconds: number) => {
 };
 
 export function HomePage() {
-  const { dataset, activeContactId, navigate, openCallsForDate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo } = useApp();
+  const { dataset, activeContactId, navigate, openCallsForDate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo, settings } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
   const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
   useEffect(() => {
@@ -48,8 +53,7 @@ export function HomePage() {
   const accountName = dataset.source.kind === "empty"
     ? "微信用户"
     : dataset.account.displayName.trim() || "微信用户";
-  const hours = Math.floor(summary.totalDurationSeconds / 3600);
-  const minutes = Math.floor((summary.totalDurationSeconds % 3600) / 60);
+  const totalMinutes = Math.floor(summary.totalDurationSeconds / 60);
   const videoCount = events.filter((event) => event.mediaType === "video" && (event.connectedDurationSeconds ?? 0) > 0).length;
   const voiceCount = events.filter((event) => event.mediaType === "voice" && (event.connectedDurationSeconds ?? 0) > 0).length;
 
@@ -76,15 +80,15 @@ export function HomePage() {
         <>
           <section className="memory-hero" data-contact-content>
             <div className="hero-glow glow-a" /><div className="hero-glow glow-b" />
-            <div className="hero-copy"><span className="soft-label">接通总时长</span><div className="big-number"><strong>{hours}</strong><span>小时</span><strong>{minutes}</strong><span>分</span></div><p>{formatDate(recentStart)}到 {formatDate(recentEnd)}</p><button className="hero-button" onClick={() => navigate("calls")}>查看记录</button></div>
+            <div className="hero-copy"><span className="soft-label">接通总时长</span><AnimatedNumber className="big-number" value={totalMinutes} format={formatTotalMinutes} reducedMotion={settings.reducedMotion}>{(value) => <><strong>{Math.floor((value ?? 0) / 60)}</strong><span className="duration-unit">小时</span><strong>{(value ?? 0) % 60}</strong><span className="duration-unit">分</span></>}</AnimatedNumber><p>{formatDate(recentStart)}到 {formatDate(recentEnd)}</p><button className="hero-button" onClick={() => navigate("calls")}>查看记录</button></div>
             <div className="connection-art" aria-hidden="true"><div className="person-profile"><Avatar avatarRef={dataset.account.avatarRef} label={dataset.account.displayName} className="person person-me" /><small>{dataset.account.displayName}</small></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div>{contact && <div className="person-profile"><ContactAvatar contact={contact} className="person person-you" /><small>{contact.displayName}</small></div>}<div className="float-note note-one">💬</div><div className="float-note note-two">✨</div></div>
-            <div className="hero-chips"><span>📹 视频 {videoCount} 次</span><span>🎙 语音 {voiceCount} 次</span><span>✨ 共接通 {summary.connectedCount} 次</span></div>
+            <div className="hero-chips"><span>📹 视频 <AnimatedNumber value={videoCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</span><span>🎙 语音 <AnimatedNumber value={voiceCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</span><span>✨ 共接通 <AnimatedNumber value={summary.connectedCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</span></div>
           </section>
 
           <section className="quick-stories" data-contact-content>
-            <article className="story-card story-purple"><div className="story-icon moon-icon"><span>🌙</span></div><div><small>最长通话</small><strong>{formatDuration(summary.longestDurationSeconds)}</strong></div></article>
-            <article className="story-card story-peach"><div className="story-icon clock-icon"><span>🕘</span></div><div><small>常见开始时段</small><strong>{favoritePeriod?.label ?? "暂无"}</strong>{favoritePeriod && <p>{favoritePeriod.rangeLabel} · {favoritePeriod.count} 次</p>}</div></article>
-            <article className="story-card story-mint"><div className="story-icon ring-icon"><span>📞</span></div><div><small>接通次数</small><strong>{summary.connectedCount} 次</strong><p>平均每次 {formatCompactDuration(Math.round(summary.meanDurationSeconds ?? 0))}</p></div></article>
+            <article className="story-card story-purple"><div className="story-icon moon-icon"><span>🌙</span></div><div><small>最长通话</small><strong><AnimatedNumber value={summary.longestDurationSeconds} format={formatDuration} reducedMotion={settings.reducedMotion} /></strong></div></article>
+            <article className="story-card story-peach"><div className="story-icon clock-icon"><span>🕘</span></div><div><small>常见开始时段</small><strong>{favoritePeriod?.label ?? "暂无"}</strong>{favoritePeriod && <p>{favoritePeriod.rangeLabel} · <AnimatedNumber value={favoritePeriod.count} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</p>}</div></article>
+            <article className="story-card story-mint"><div className="story-icon ring-icon"><span>📞</span></div><div><small>接通次数</small><strong><AnimatedNumber value={summary.connectedCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</strong><p>平均每次 <AnimatedNumber value={Math.round(summary.meanDurationSeconds ?? 0)} format={formatMeanDuration} reducedMotion={settings.reducedMotion} /></p></div></article>
           </section>
 
           <section className="soft-panel rhythm-panel" data-contact-content>

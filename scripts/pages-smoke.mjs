@@ -211,6 +211,12 @@ try {
     window.__contactAnimationCount = 0;
     window.__originalAnimate = Element.prototype.animate;
     window.__firstChartBar = document.querySelector(".soft-column .bar");
+    window.__numberFrames = [];
+    window.__numberStart = Number(document.querySelector(".big-number").dataset.numberCurrent);
+    window.__numberObserver = new MutationObserver(() => {
+      window.__numberFrames.push(Number(document.querySelector(".big-number").dataset.numberCurrent));
+    });
+    window.__numberObserver.observe(document.querySelector(".big-number"), { attributes: true, attributeFilter: ["data-number-current"] });
     Element.prototype.animate = function (...args) {
       if (this.matches("[data-contact-content]")) window.__contactAnimationCount += 1;
       return window.__originalAnimate.apply(this, args);
@@ -226,8 +232,21 @@ try {
   assert.match(await page.locator(".latest-main strong").textContent(), /老周/);
   await page.waitForFunction(() => [...document.querySelectorAll("[data-contact-content]")]
     .every((element) => element.getAnimations().length === 0));
+  await page.waitForFunction(() => [...document.querySelectorAll("[data-number-target]")]
+    .every((element) => element.dataset.numberCurrent === element.dataset.numberTarget));
+  const numericMotion = await page.evaluate(() => {
+    window.__numberObserver.disconnect();
+    const element = document.querySelector(".big-number");
+    return { start: window.__numberStart, frames: window.__numberFrames, end: Number(element.dataset.numberTarget), label: element.getAttribute("aria-label") };
+  });
+  assert.ok(numericMotion.frames.some((value) => value > Math.min(numericMotion.start, numericMotion.end)
+    && value < Math.max(numericMotion.start, numericMotion.end)), "Total duration must show intermediate values, not just replace text");
+  assert.equal(numericMotion.frames.at(-1), numericMotion.end);
+  assert.match(numericMotion.label, /^\d+小时 \d+分$/);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await selectContact(page, 0);
+  assert.ok(await page.locator("[data-number-target]").evaluateAll((elements) => elements.every((element) =>
+    element.dataset.numberCurrent === element.dataset.numberTarget)), "Reduced motion must display exact numbers immediately");
   assert.equal(await page.evaluate(() => window.__contactAnimationCount), 4,
     "Reduced motion must skip the scripted contact animations");
   await page.evaluate(() => { Element.prototype.animate = window.__originalAnimate; });
