@@ -205,6 +205,32 @@ try {
   await page.locator(".contact-switch").click();
   await selectContact(page, 1);
   await selectContact(page, 0);
+  // Exercise the shared application transition with animations enabled, not just demo startup.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => {
+    window.__contactAnimationCount = 0;
+    window.__originalAnimate = Element.prototype.animate;
+    window.__firstChartBar = document.querySelector(".soft-column .bar");
+    Element.prototype.animate = function (...args) {
+      if (this.matches("[data-contact-content]")) window.__contactAnimationCount += 1;
+      return window.__originalAnimate.apply(this, args);
+    };
+  });
+  await selectContact(page, 1);
+  assert.equal(await page.evaluate(() => window.__contactAnimationCount), 4,
+    "Shared home sections must animate on contact change");
+  assert.ok(await page.evaluate(() => window.__firstChartBar === document.querySelector(".soft-column .bar")),
+    "Chart bars must be reused so heights can interpolate");
+  assert.ok(await page.locator(".soft-column .bar").first().evaluate((element) =>
+    getComputedStyle(element).transitionProperty.split(", ").includes("height")));
+  assert.match(await page.locator(".latest-main strong").textContent(), /老周/);
+  await page.waitForFunction(() => [...document.querySelectorAll("[data-contact-content]")]
+    .every((element) => element.getAnimations().length === 0));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await selectContact(page, 0);
+  assert.equal(await page.evaluate(() => window.__contactAnimationCount), 4,
+    "Reduced motion must skip the scripted contact animations");
+  await page.evaluate(() => { Element.prototype.animate = window.__originalAnimate; });
   for (const width of [901, 921, 1024, 1100, 1101, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await assertNoOverflow(page, `desktop home ${width}`);
@@ -279,6 +305,17 @@ try {
   });
   await page.getByRole("heading", { level: 1, name: "通话日历", exact: true }).hover();
   await tooltip.waitFor({ state: "hidden" });
+  await day.click();
+  await page.locator(".day-preview").waitFor({ state: "visible" });
+  const wallCard = await page.locator(".contribution-card").elementHandle();
+  await selectContact(page, 1);
+  assert.equal(await page.locator(".day-preview").count(), 0, "Previous contact's day detail must clear");
+  assert.equal(await page.getByRole("tooltip").count(), 0, "Previous contact's tooltip must clear");
+  assert.ok(await wallCard.evaluate((element) => element === document.querySelector(".contribution-card")),
+    "Calendar must update in place, preserving range and controls");
+  assert.ok(await page.locator(".contribution-card.mode-year").count());
+  await selectContact(page, 0);
+  await wallCard.dispose();
 
   await navigate(page, "小发现", "关于你们的小发现");
   await page.locator(".discovery-card").first().waitFor();

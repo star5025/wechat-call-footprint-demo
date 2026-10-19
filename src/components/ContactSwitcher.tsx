@@ -20,8 +20,8 @@ export function ContactSwitcher() {
   return (
     <div className="contact-switch-wrap" ref={root}>
       <button className="contact-switch" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        <ContactAvatar contact={contact} className="mini-avatar" />
-        <span className="contact-switch-copy">
+        <ContactAvatar key={contact.id} contact={contact} className="mini-avatar contact-switch-enter" />
+        <span key={`name-${contact.id}`} className="contact-switch-copy contact-switch-enter">
           <small>正在查看</small>
           <strong>{contact.displayName}</strong>
         </span>

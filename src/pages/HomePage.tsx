@@ -74,25 +74,25 @@ export function HomePage() {
         </section>
       ) : (
         <>
-          <section className="memory-hero">
+          <section className="memory-hero" data-contact-content>
             <div className="hero-glow glow-a" /><div className="hero-glow glow-b" />
             <div className="hero-copy"><span className="soft-label">接通总时长</span><div className="big-number"><strong>{hours}</strong><span>小时</span><strong>{minutes}</strong><span>分</span></div><p>{formatDate(recentStart)}到 {formatDate(recentEnd)}</p><button className="hero-button" onClick={() => navigate("calls")}>查看记录</button></div>
             <div className="connection-art" aria-hidden="true"><div className="person-profile"><Avatar avatarRef={dataset.account.avatarRef} label={dataset.account.displayName} className="person person-me" /><small>{dataset.account.displayName}</small></div><div className="sound-path">{[18,34,50,28,62,42,24,48,30].map((height, index) => <i key={index} style={{ "--h": `${height}px` } as React.CSSProperties} />)}</div>{contact && <div className="person-profile"><ContactAvatar contact={contact} className="person person-you" /><small>{contact.displayName}</small></div>}<div className="float-note note-one">💬</div><div className="float-note note-two">✨</div></div>
             <div className="hero-chips"><span>📹 视频 {videoCount} 次</span><span>🎙 语音 {voiceCount} 次</span><span>✨ 共接通 {summary.connectedCount} 次</span></div>
           </section>
 
-          <section className="quick-stories">
+          <section className="quick-stories" data-contact-content>
             <article className="story-card story-purple"><div className="story-icon moon-icon"><span>🌙</span></div><div><small>最长通话</small><strong>{formatDuration(summary.longestDurationSeconds)}</strong></div></article>
             <article className="story-card story-peach"><div className="story-icon clock-icon"><span>🕘</span></div><div><small>常见开始时段</small><strong>{favoritePeriod?.label ?? "暂无"}</strong>{favoritePeriod && <p>{favoritePeriod.rangeLabel} · {favoritePeriod.count} 次</p>}</div></article>
             <article className="story-card story-mint"><div className="story-icon ring-icon"><span>📞</span></div><div><small>接通次数</small><strong>{summary.connectedCount} 次</strong><p>平均每次 {formatCompactDuration(Math.round(summary.meanDurationSeconds ?? 0))}</p></div></article>
           </section>
 
-          <section className="soft-panel rhythm-panel">
+          <section className="soft-panel rhythm-panel" data-contact-content>
             <div className="section-heading"><div><span className="section-emoji">📊</span><div><h2>近期接通统计</h2></div></div><div className="soft-tabs"><button className={metric === "duration" ? "active" : ""} onClick={() => setMetric("duration")}>时长</button><button className={metric === "count" ? "active" : ""} onClick={() => setMetric("count")}>次数</button></div></div>
-            <div className="soft-chart">{activeDays.map((day) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatChartDuration(day.durationSeconds) : String(day.connectedCount); return <button className="soft-column" key={day.date} aria-label={`${formatDate(day.date)}，${metric === "duration" ? `接通时长 ${metricValue}` : `通话 ${metricValue} 次`}`} onClick={() => openCallsForDate(day.date)}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip">{metricValue}</span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
+            <div className="soft-chart">{activeDays.map((day, index) => { const value = metric === "duration" ? day.durationSeconds : day.connectedCount; const metricValue = metric === "duration" ? formatChartDuration(day.durationSeconds) : String(day.connectedCount); return <button className="soft-column" key={index} aria-label={`${formatDate(day.date)}，${metric === "duration" ? `接通时长 ${metricValue}` : `通话 ${metricValue} 次`}`} onClick={() => openCallsForDate(day.date)}><span className="bar-wrap"><i className="bar" style={{ height: `${Math.max(7, value / max * 100)}%` }}><span className="soft-column-tip">{metricValue}</span></i></span><small>{Number(day.date.slice(8))}日</small></button>; })}</div>
           </section>
 
-          <section className="bottom-row">
+          <section className="bottom-row" data-contact-content>
             <article className="soft-panel latest-panel"><div className="section-heading compact"><div><span className="section-emoji coral">🕘</span><div><h2>最近一次</h2><p>{latest?.startedAt ? `${formatDate(latest.startedAt.slice(0,10))} · ${formatTime(latest.startedAt)}` : "暂无"}</p></div></div><button className="link-btn" onClick={() => navigate("calls")}>全部记录</button></div>{latest && <button className="latest-call" onClick={() => openEvent(latest)}><span className={`call-bubble ${latest.mediaType}`}>{latest.mediaType === "video" ? "📹" : "🎙️"}</span><span className="latest-main"><strong>和{contactName}的{mediaLabel(latest.mediaType)}</strong><small>{outcomeLabel(latest.outcome)}</small></span><span className="latest-time"><strong>{formatDuration(latest.connectedDurationSeconds)}</strong><small>查看详情</small></span></button>}</article>
             <article className="soft-panel tiny-calendar-panel"><div className="section-heading compact"><div><span className="section-emoji yellow">📅</span><div><h2>有记录的日期</h2><p>{formatDate(recentStart)} — {formatDate(recentEnd)}</p></div></div><button className="link-btn" onClick={() => navigate("wall")}>查看日历</button></div><div className="tiny-calendar">{wall.days.slice(-9).map((day) => <div className={`tiny-day ${day.connectedCount ? "active" : ""}`} key={day.date}><span>{Number(day.date.slice(8))}</span><small>{day.connectedCount ? `${day.connectedCount}次` : "·"}</small></div>)}</div></article>
           </section>

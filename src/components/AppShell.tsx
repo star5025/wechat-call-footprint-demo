@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Sheets } from "@/components/Sheets";
 import { ImportDialog } from "@/components/ImportDialog";
@@ -9,8 +9,26 @@ import { applyTheme, readStoredTheme, saveTheme, type ColorTheme } from "@/theme
 import { isPagesDemo } from "@/runtime";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { navigate, setSettingsOpen, settings, dataMode, toasts } = useApp();
+  const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId } = useApp();
   const [theme, setTheme] = useState<ColorTheme>(readStoredTheme);
+  const mainRef = useRef<HTMLElement>(null);
+  const previousContact = useRef(activeContactId);
+
+  useLayoutEffect(() => {
+    const changed = previousContact.current !== activeContactId;
+    previousContact.current = activeContactId;
+    if (!changed || settings.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const animations: Animation[] = [];
+    mainRef.current?.querySelectorAll<HTMLElement>("[data-contact-content]").forEach((element) => {
+      if (typeof element.animate !== "function") return;
+      // Opacity only: transforms would change the containing block of fixed popovers.
+      animations.push(element.animate([{ opacity: .45 }, { opacity: 1 }], {
+        duration: 280,
+        easing: "cubic-bezier(.22,.61,.36,1)"
+      }));
+    });
+    return () => animations.forEach((animation) => animation.cancel());
+  }, [activeContactId, settings.reducedMotion]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -48,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button className="round-btn" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
           </div>
         </header>
-        <main>{children}</main>
+        <main ref={mainRef}>{children}</main>
       </div>
       <Sheets />
       {!isPagesDemo && <ImportDialog />}

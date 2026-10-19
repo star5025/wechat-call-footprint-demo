@@ -205,9 +205,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [persistSettings, settings]);
 
   const selectContact = useCallback((contactId: string | null) => {
+    if (contactId === activeContactId) return;
     setActiveContactId(contactId);
+    setSelectedEvent(null);
     void persistSettings({ ...settings, lastContactId: contactId });
-  }, [persistSettings, settings]);
+  }, [activeContactId, persistSettings, settings]);
 
   const finishDataLoad = useCallback(async (
     nextDataset: AppDataset,
