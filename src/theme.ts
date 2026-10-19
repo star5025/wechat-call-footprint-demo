@@ -1,6 +1,8 @@
+import { browserStoragePrefix } from "@/runtime";
+
 export type ColorTheme = "light" | "dark";
 
-const THEME_STORAGE_KEY = "call-footprint.theme";
+const THEME_STORAGE_KEY = `${browserStoragePrefix}.theme`;
 
 export function readStoredTheme(): ColorTheme {
   try {

@@ -22,6 +22,7 @@ import { createEmptyDataset } from "@/data/emptyDataset";
 import { chooseImportFile, deleteDataset, getAppInfo, loadDataset, loadSettings, saveDataset, saveSettings, scanWechatCalls } from "@/native/bridge";
 import { makeImportPreview, parseDataset, validateDataset } from "@/data/dataset";
 import { scanErrorMessage } from "@/native/scanErrors";
+import { isPagesDemo } from "@/runtime";
 
 interface ToastMessage {
   id: number;
@@ -154,7 +155,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (storedDataset) {
           setDataset(storedDataset);
           setDataMode("imported");
-          setActiveContactId(nextSettings.lastContactId ?? storedDataset.contacts[0]?.id ?? null);
+          setActiveContactId(storedDataset.contacts.some((contact) => contact.id === nextSettings.lastContactId)
+            ? nextSettings.lastContactId : storedDataset.contacts[0]?.id ?? null);
         } else {
           setDataset(createEmptyDataset());
           setDataMode("empty");
@@ -249,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scanWechat = useCallback(async () => {
-    if (wechatScanning) return;
+    if (isPagesDemo || wechatScanning) return;
     setSettingsOpen(false);
     setScanConsentOpen(true);
   }, [wechatScanning]);
@@ -257,7 +259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cancelWechatScan = useCallback(() => setScanConsentOpen(false), []);
 
   const confirmWechatScan = useCallback(async () => {
-    if (wechatScanning) return;
+    if (isPagesDemo || wechatScanning) return;
     setScanConsentOpen(false);
     setDataLoadSuccess(null);
     setWechatScanning(true);
@@ -355,6 +357,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearDataset = useCallback(async () => {
     try {
+      if (isPagesDemo) {
+        const nextDataset = await loadDataset();
+        if (!nextDataset) return;
+        setDataset(nextDataset);
+        setDataMode("imported");
+        setActiveContactId(nextDataset.contacts[0]?.id ?? null);
+        setSelectedEvent(null);
+        setCallsDateFilter(null);
+        setDataLoadSuccess(null);
+        setRoute("home");
+        await persistSettings({ ...DEFAULT_SETTINGS });
+        setSettingsOpen(false);
+        notify("演示已重置");
+        return;
+      }
       await deleteDataset();
       setDataset(createEmptyDataset());
       setDataMode("empty");

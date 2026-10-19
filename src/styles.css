@@ -55,6 +55,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(141,119,216,
 .pill-nav button.active { color: white; background: linear-gradient(135deg, #9785df, #755fc3); box-shadow: 0 7px 17px rgba(117,95,195,.24); }
 .pill-nav span { font-size: 16px; }
 .top-actions { justify-self: end; display: flex; align-items: center; gap: 9px; }
+.top-actions .demo-tag.pages-demo-tag{display:inline-flex;white-space:nowrap;flex-shrink:0}
 .demo-tag { padding: 5px 9px; border-radius: 999px; color: #816dcc; background: #eeeaff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; }
 .round-btn { width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(255,255,255,.82); color: var(--muted); box-shadow: 0 5px 18px rgba(70,57,91,.07); }
 .round-btn:hover { transform: translateY(-1px); color: var(--purple); background: white; }
@@ -186,7 +187,7 @@ small{font-weight:650}
 
 @media(max-width:620px){.summary-image-fab{right:16px;bottom:16px;width:54px;height:54px;border-radius:18px}.summary-image-fab svg{width:25px;height:25px}.export-confirm-dialog{padding:36px 24px 28px}.export-confirm-actions{flex-direction:column-reverse}.export-confirm-actions button{width:100%}}
 .reduced-motion *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
-@media(max-width:900px){.day-preview{align-items:flex-start;flex-direction:column}.day-preview-actions{flex-wrap:wrap}.wall-metric-toggle{order:3}}
+@media(max-width:900px){.summary-image-fab{bottom:84px}.day-preview{align-items:flex-start;flex-direction:column}.day-preview-actions{flex-wrap:wrap}.wall-metric-toggle{order:3}}
 @media(max-width:620px){.import-stats{grid-template-columns:1fr}.import-range{flex-direction:column}.dialog-buttons{flex-direction:column-reverse}.dialog-buttons button{width:100%}.day-preview-actions{padding-right:0}.contact-choice-dialog{padding:23px 17px}.contact-choice-heading{align-items:stretch;flex-direction:column}.contact-choice-search{width:100%}.contact-choice-list{max-height:260px}.load-success-stats{grid-template-columns:1fr 1fr}}
 
 /* Black night theme */

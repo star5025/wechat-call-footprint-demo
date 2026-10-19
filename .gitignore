@@ -17,6 +17,7 @@ __pycache__/
 # Future Node/Tauri build outputs
 node_modules/
 dist/
+dist-pages/
 build/
 target/
 src-tauri/target/

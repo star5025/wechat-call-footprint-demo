@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 const rootDirectory = path.dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === "pages-demo" ? "/wechat-call-footprint-demo/" : "/",
+  build: { outDir: mode === "pages-demo" ? "dist-pages" : "dist" },
   plugins: [react()],
   resolve: {
     alias: {
@@ -30,4 +32,4 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"]
   }
-});
+}));

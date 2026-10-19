@@ -6,6 +6,7 @@ import { DataLoadDialog } from "@/components/DataLoadDialog";
 import { ScanConsentDialog } from "@/components/ScanConsentDialog";
 import { useApp } from "@/state/AppContext";
 import { applyTheme, readStoredTheme, saveTheme, type ColorTheme } from "@/theme";
+import { isPagesDemo } from "@/runtime";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { navigate, setSettingsOpen, settings, dataMode, toasts } = useApp();
@@ -27,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <Navigation />
           <div className="top-actions">
-            <span className={`demo-tag ${dataMode === "imported" ? "imported-tag" : ""}`}>{dataMode === "empty" ? "开始使用" : "已保存"}</span>
+            <span className={`demo-tag ${isPagesDemo ? "pages-demo-tag" : dataMode === "imported" ? "imported-tag" : ""}`}>{isPagesDemo ? "演示" : dataMode === "empty" ? "开始使用" : "已保存"}</span>
             <button
               className={`theme-toggle ${theme === "dark" ? "dark" : ""}`}
               aria-label={theme === "dark" ? "切换到日间模式" : "切换到黑夜模式"}
@@ -43,9 +44,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main>{children}</main>
       </div>
       <Sheets />
-      <ImportDialog />
+      {!isPagesDemo && <ImportDialog />}
       <DataLoadDialog />
-      <ScanConsentDialog />
+      {!isPagesDemo && <ScanConsentDialog />}
       <div className="toast-zone" aria-live="polite">
         {toasts.map((toast) => <div className="toast" key={toast.id}><span>✅</span>{toast.text}</div>)}
       </div>

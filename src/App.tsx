@@ -21,6 +21,13 @@ export default function App() {
     if (ready && introComplete && launchPhase === "enter") setLaunchPhase("leaving");
   }, [introComplete, launchPhase, ready]);
 
+  useEffect(() => {
+    if (launchPhase !== "leaving") return;
+    // Background tabs and reduced-motion settings may not deliver animationend.
+    const timer = window.setTimeout(() => setLaunchPhase("done"), 700);
+    return () => window.clearTimeout(timer);
+  }, [launchPhase]);
+
   if (launchPhase !== "done") {
     return (
       <div

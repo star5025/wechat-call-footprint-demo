@@ -10,10 +10,12 @@ import type {
   WechatScanResult
 } from "@/domain";
 
-const isTauriRuntime = () =>
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+import { browserStoragePrefix, isPagesDemo } from "@/runtime";
 
-const SETTINGS_KEY = "call-footprint.settings.v1";
+const isTauriRuntime = () =>
+  !isPagesDemo && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+const SETTINGS_KEY = `${browserStoragePrefix}.settings.v1`;
 const DATASET_KEY = "call-footprint.dataset.v1";
 
 export async function getAppInfo(): Promise<AppInfo> {
@@ -30,11 +32,24 @@ export async function getAppInfo(): Promise<AppInfo> {
 
 export async function loadSettings(): Promise<AppSettings | null> {
   if (isTauriRuntime()) return invoke<AppSettings | null>("load_settings");
+  if (isPagesDemo) {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      const stored = raw ? JSON.parse(raw) : null;
+      return stored?.settingsVersion === 1 ? stored as AppSettings : null;
+    } catch {
+      return null;
+    }
+  }
   const raw = localStorage.getItem(SETTINGS_KEY);
   return raw ? (JSON.parse(raw) as AppSettings) : null;
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
+  if (isPagesDemo) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Optional in the public demo. */ }
+    return;
+  }
   if (isTauriRuntime()) {
     await invoke("save_settings", { settings });
     return;
@@ -47,11 +62,16 @@ export async function loadDataset(): Promise<AppDataset | null> {
     const content = await invoke<string | null>("load_dataset");
     return content ? (JSON.parse(content) as AppDataset) : null;
   }
+  if (isPagesDemo) {
+    const { createDemoDataset } = await import("@/demo/dataset");
+    return createDemoDataset();
+  }
   const raw = localStorage.getItem(DATASET_KEY);
   return raw ? (JSON.parse(raw) as AppDataset) : null;
 }
 
 export async function saveDataset(dataset: AppDataset): Promise<void> {
+  if (isPagesDemo) return;
   const content = JSON.stringify(dataset);
   if (isTauriRuntime()) {
     await invoke("save_dataset", { content });
@@ -61,6 +81,7 @@ export async function saveDataset(dataset: AppDataset): Promise<void> {
 }
 
 export async function deleteDataset(): Promise<void> {
+  if (isPagesDemo) return;
   if (isTauriRuntime()) {
     await invoke("delete_dataset");
     return;
@@ -69,6 +90,7 @@ export async function deleteDataset(): Promise<void> {
 }
 
 export async function chooseImportFile(): Promise<ImportFileResult | null> {
+  if (isPagesDemo) return null;
   if (isTauriRuntime()) return invoke<ImportFileResult | null>("choose_import_file");
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
@@ -130,6 +152,7 @@ export async function exportJson(
   suggestedName: string,
   dataset: AppDataset
 ): Promise<ExportResult | null> {
+  if (isPagesDemo) return null;
   const content = JSON.stringify(dataset, null, 2);
   if (isTauriRuntime()) {
     return invoke<ExportResult | null>("export_json", { suggestedName, content });

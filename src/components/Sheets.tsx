@@ -4,6 +4,7 @@ import { buildContactCallSummary } from "@/data/contactSummary";
 import { contactSummaryFileName, createContactSummaryPng } from "@/export/contactSummaryImage";
 import { useApp } from "@/state/AppContext";
 import { exportJson, exportPng } from "@/native/bridge";
+import { isPagesDemo } from "@/runtime";
 import {
   directionLabel,
   formatDate,
@@ -190,6 +191,7 @@ export function Sheets() {
       <aside className={`settings-sheet ${settingsOpen ? "open" : ""}`} aria-hidden={!settingsOpen}>
         <header><div><h2>设置</h2></div><button onClick={() => setSettingsOpen(false)}>×</button></header>
         <div className="setting-list">
+          {!isPagesDemo && <>
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
             <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "读取中…" : "读取微信"}</strong><small>{wechatScanning ? "请保持微信打开" : "不改动微信内容"}</small></span><i>›</i>
           </button>
@@ -204,8 +206,12 @@ export function Sheets() {
               <span className="setting-icon danger-icon">🗑️</span><span><strong>删除记录</strong><small>不改动微信内容</small></span><i>›</i>
             </button>
           )}
+          </>}
+          {isPagesDemo && <button className="setting-item" onClick={() => void clearDataset()}>
+            <span className="setting-icon lavender">↻</span><span><strong>重置演示</strong></span><i>›</i>
+          </button>}
         </div>
-        <div className="local-note"><span>📁</span><p><strong>保存情况</strong><br />{dataMode === "empty" ? "暂无本地记录" : "记录保存在本机"}</p></div>
+        <div className="local-note"><span>{isPagesDemo ? "✨" : "📁"}</span><p><strong>{isPagesDemo ? "虚构数据" : "保存情况"}</strong>{!isPagesDemo && <><br />{dataMode === "empty" ? "暂无本地记录" : "记录保存在本机"}</>}</p></div>
       </aside>
 
       {exportConfirmOpen && (
