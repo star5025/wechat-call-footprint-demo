@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CallEvent } from "@contracts/models";
 import { ThemeDatePicker } from "@/components/ThemeDatePicker";
 import { ThemeSelect } from "@/components/ThemeSelect";
@@ -13,7 +13,7 @@ import { useApp } from "@/state/AppContext";
 import { directionLabel, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel } from "@/utils/format";
 
 export function CallsPage() {
-  const { dataset, activeContactId, callsDateFilter, clearCallsDateFilter, openEvent } = useApp();
+  const { dataset, activeContactId, callsDateFilter, clearCallsDateFilter, openEvent, settings } = useApp();
   const [timeRange, setTimeRange] = useState<CallsTimeRange>("all");
   const [durationRange, setDurationRange] = useState<CallsDurationRange>("all");
   const [sortOrder, setSortOrder] = useState<CallsSortOrder>("newest");
@@ -22,6 +22,27 @@ export function CallsPage() {
   const allEvents = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const [customStart, setCustomStart] = useState(allEvents.at(-1)?.startedAt?.slice(0, 10) ?? "");
   const [customEnd, setCustomEnd] = useState(allEvents[0]?.startedAt?.slice(0, 10) ?? "");
+
+  const feedRef = useRef<HTMLDivElement>(null);
+  const filterKey = JSON.stringify([activeContactId, callsDateFilter, timeRange, durationRange, sortOrder, customStart, customEnd, search]);
+  const previousFilterKey = useRef(filterKey);
+
+  useLayoutEffect(() => {
+    const changed = previousFilterKey.current !== filterKey;
+    previousFilterKey.current = filterKey;
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!changed || settings.reducedMotion || preference.matches || !feedRef.current?.animate) return;
+    const animation = feedRef.current.animate([
+      { opacity: .94, transform: "translateY(4px)" },
+      { opacity: 1, transform: "translateY(0)" }
+    ], { duration: 300, easing: "cubic-bezier(.22,.61,.36,1)" });
+    const stop = () => { if (preference.matches) animation.cancel(); };
+    preference.addEventListener("change", stop);
+    return () => {
+      animation.cancel();
+      preference.removeEventListener("change", stop);
+    };
+  }, [filterKey, settings.reducedMotion]);
 
   const filtered = useMemo(() => {
     const dayEvents = callsDateFilter
@@ -69,7 +90,7 @@ export function CallsPage() {
       </section>
       {!callsDateFilter && timeRange === "custom" && <div className="calls-custom-range"><div className="theme-field"><span>开始日期</span><ThemeDatePicker label="开始日期" value={customStart} max={customEnd || undefined} onChange={setCustomStart} /></div><i>—</i><div className="theme-field"><span>结束日期</span><ThemeDatePicker label="结束日期" value={customEnd} min={customStart || undefined} onChange={setCustomEnd} /></div></div>}
 
-      <div className="call-feed">
+      <div className="call-feed" ref={feedRef}>
         {!filtered.length && <article className="gentle-note"><span>📭</span><div><strong>没有匹配的记录</strong></div></article>}
         {groups.map((group) => (
           <section className="feed-day" key={group.key}>

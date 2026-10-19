@@ -373,6 +373,19 @@ try {
   assert.equal(await page.locator(".rank-card").count(), 3);
   await navigate(page, "记录", "通话记录");
   await page.locator(".feed-card").first().waitFor();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => {
+    window.__feedAnimations = 0;
+    window.__feedAnimateOriginal = Element.prototype.animate;
+    window.__feedNode = document.querySelector(".call-feed");
+    Element.prototype.animate = function (...args) {
+      if (this.matches(".call-feed")) {
+        window.__feedAnimations += 1;
+        if (Number(args[0][0].opacity) < .9) throw new Error("Filter animation must not flash white");
+      }
+      return window.__feedAnimateOriginal.apply(this, args);
+    };
+  });
   const totalCalls = await page.locator(".feed-card").count();
   assert.ok(totalCalls > 0, "Call feed must contain real rendered synthetic records");
   await page.getByRole("button", { name: "通话时长：全部时长", exact: true }).click();
@@ -387,6 +400,28 @@ try {
     assert.match(duration, /^[0-4]分 [0-5]\d秒$/, `Duration filter leaked a record: ${duration}`);
     assert.notEqual(duration, "0分 00秒", "Unconnected calls must be excluded by duration");
   }
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 1, "Duration change must animate");
+  await page.getByRole("button", { name: "排序方式：最新优先", exact: true }).click();
+  await page.getByRole("listbox", { name: "排序方式", exact: true }).getByRole("option", { name: "时长升序", exact: true }).click();
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 2, "Sort change must animate");
+  await page.getByRole("button", { name: "时间范围：全部时间", exact: true }).click();
+  await page.getByRole("listbox", { name: "时间范围", exact: true }).getByRole("option", { name: "自定义", exact: true }).click();
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 3, "Time range change must animate even if results are unchanged");
+  await page.getByRole("button", { name: "搜索记录", exact: true }).click();
+  const search = page.locator(".search-reveal input");
+  await search.fill("没有匹配的联系人");
+  await page.locator(".call-feed .gentle-note").waitFor();
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 4, "Empty results must animate");
+  await search.fill("没有匹配的联系人2");
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 5, "Every condition update must animate, even empty-to-empty");
+  await search.fill("");
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 6);
+  assert.ok(await page.evaluate(() => window.__feedNode === document.querySelector(".call-feed")), "Feed must update in place");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await search.fill("阿杰");
+  assert.equal(await page.evaluate(() => window.__feedAnimations), 6, "Reduced motion must skip filter animations");
+  await search.fill("");
+  await page.evaluate(() => { Element.prototype.animate = window.__feedAnimateOriginal; });
   await page.locator(".feed-card").first().click();
   await page.locator('.detail-sheet[aria-hidden="false"]').waitFor();
   await page.locator(".detail-sheet").getByRole("heading", { name: new RegExp(contacts[0]) }).waitFor();
