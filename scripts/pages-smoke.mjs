@@ -340,6 +340,10 @@ try {
   await waitForHome(page);
   await assertNoOverflow(page, "mobile home");
   await assertTopbarLayout(page, "mobile 390");
+  assert.ok(await page.locator(".pill-nav").evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top > innerHeight / 2 && Math.abs(innerHeight - rect.bottom - 14) < 2;
+  }), "Mobile navigation must be anchored to the viewport bottom");
   await assertDownloadEntry(page, "mobile 390");
   await assertNoRealDataControls(page);
   await navigate(page, "通话日历", "通话日历");

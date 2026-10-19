@@ -59,6 +59,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(141,119,216,
 .app.pages-demo .pages-download { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 52px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--lavender-soft); color: var(--purple); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .app.pages-demo .pages-download:hover { box-shadow: var(--shadow); }
 .app.pages-demo .pages-download:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
+@media(max-width:900px) { .app.pages-demo .topbar { backdrop-filter: none; } }
 @media(min-width:901px) { .app.pages-demo .topbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; } }
 @media(min-width:901px) and (max-width:1100px) { .app.pages-demo .brand strong { display: none; } .app.pages-demo .pill-nav button { min-width: 90px; } }
 .demo-tag { padding: 5px 9px; border-radius: 999px; color: #816dcc; background: #eeeaff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; }
