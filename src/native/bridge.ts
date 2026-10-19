@@ -22,7 +22,7 @@ export async function getAppInfo(): Promise<AppInfo> {
   if (isTauriRuntime()) return invoke<AppInfo>("app_info");
   return {
     name: "通话足迹",
-    version: "0.5.0-browser",
+    version: "0.5.1-browser",
     platform: navigator.platform,
     arch: "browser",
     dataDirectory: "浏览器预览模式",

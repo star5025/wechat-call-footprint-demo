@@ -103,6 +103,53 @@ async function assertNoOverflow(page, label) {
   }
 }
 
+async function assertDownloadEntry(page, label) {
+  const link = page.getByRole("link", { name: "下载 Windows x64 安装包", exact: true });
+  assert.equal(await link.count(), 1, `${label}: exactly one Windows download link`);
+  assert.ok(await link.isVisible(), `${label}: download link must be visible`);
+  assert.equal(await link.getAttribute("href"),
+    "https://github.com/star5025/wechat-call-footprint-demo/releases/download/v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe");
+  assert.equal(await link.textContent(), "下载");
+  assert.equal(await link.getAttribute("title"), null, "Download link must not add a tooltip");
+  assert.ok(await link.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return rect.width >= 44 && rect.height >= 44 && rect.left >= 0 && rect.right <= innerWidth
+      && rect.top >= 0 && rect.bottom <= innerHeight && (hit === element || element.contains(hit));
+  }), `${label}: download must be a reachable touch target`);
+  // Inspect the direct installer URL only; never click it or bypass the external-request guard.
+}
+
+async function assertTopbarLayout(page, label) {
+  const layout = await page.evaluate(() => {
+    const bounds = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { name: element.className, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    };
+    const header = document.querySelector(".app.pages-demo .topbar");
+    return {
+      width: innerWidth,
+      header: bounds(header),
+      children: [...header.children].map(bounds),
+      actions: [...header.querySelector(".top-actions").children].map(bounds)
+    };
+  });
+  for (const group of [layout.children, layout.actions]) {
+    for (const [index, rect] of group.entries()) {
+      assert.ok(rect.left >= 0 && rect.right <= layout.width, `${label}: topbar control must fit: ${JSON.stringify(rect)}`);
+      if (layout.width > 900) {
+        assert.ok(rect.top >= layout.header.top && rect.bottom <= layout.header.bottom,
+          `${label}: desktop navigation and actions must remain in the topbar`);
+      }
+      for (const other of group.slice(index + 1)) {
+        const overlap = Math.min(rect.right, other.right) - Math.max(rect.left, other.left) > 0.5
+          && Math.min(rect.bottom, other.bottom) - Math.max(rect.top, other.top) > 0.5;
+        assert.ok(!overlap, `${label}: topbar controls overlap: ${JSON.stringify([rect, other])}`);
+      }
+    }
+  }
+}
+
 let browser;
 try {
   await new Promise((resolve, reject) => {
@@ -149,7 +196,12 @@ try {
   await page.locator(".contact-switch").click();
   await selectContact(page, 1);
   await selectContact(page, 0);
-  await assertNoOverflow(page, "desktop home");
+  for (const width of [901, 921, 1024, 1100, 1101, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await assertNoOverflow(page, `desktop home ${width}`);
+    await assertTopbarLayout(page, `desktop ${width}`);
+    await assertDownloadEntry(page, `desktop ${width}`);
+  }
   await assertNoRealDataControls(page);
 
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
@@ -287,6 +339,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await waitForHome(page);
   await assertNoOverflow(page, "mobile home");
+  await assertTopbarLayout(page, "mobile 390");
+  await assertDownloadEntry(page, "mobile 390");
   await assertNoRealDataControls(page);
   await navigate(page, "通话日历", "通话日历");
   await assertNoOverflow(page, "mobile calendar");

@@ -21,13 +21,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
-      <div className={`app ${settings.reducedMotion ? "reduced-motion" : ""}`}>
+      <div className={`app ${isPagesDemo ? "pages-demo" : ""} ${settings.reducedMotion ? "reduced-motion" : ""}`}>
         <header className="topbar">
           <button className="brand" onClick={() => navigate("home")} aria-label="回到首页">
             <span className="brand-logo" aria-hidden="true">📞</span><strong>通话足迹</strong>
           </button>
           <Navigation />
           <div className="top-actions">
+            {isPagesDemo && (
+              <a
+                className="pages-download"
+                href="https://github.com/star5025/wechat-call-footprint-demo/releases/download/v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe"
+                aria-label="下载 Windows x64 安装包"
+              >下载</a>
+            )}
             <span className={`demo-tag ${isPagesDemo ? "pages-demo-tag" : dataMode === "imported" ? "imported-tag" : ""}`}>{isPagesDemo ? "演示" : dataMode === "empty" ? "开始使用" : "已保存"}</span>
             <button
               className={`theme-toggle ${theme === "dark" ? "dark" : ""}`}
