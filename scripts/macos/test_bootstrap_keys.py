@@ -21,6 +21,13 @@ import capture_keys as capture
 
 
 class SyntheticTests(unittest.TestCase):
+    def test_system_tool_paths_exist_on_macos(self):
+        if sys.platform != 'darwin':
+            self.skipTest('macOS system paths')
+        for tool in bootstrap.TOOLS.values():
+            self.assertTrue(Path(tool).is_file(), tool)
+            self.assertTrue(os.access(tool, os.X_OK), tool)
+
     def test_acknowledgement_required_before_actions(self):
         for module, argv in ((bootstrap, ['bootstrap', '--db-root', '/synthetic', '--state-dir', '/synthetic-state']), (capture, ['capture', '--exe', '/synthetic', '--db-root', '/synthetic', '--out', '/synthetic-output'])):
             with self.subTest(module=module.__name__), patch.object(sys, 'argv', argv), patch.object(module, 'native_user') as native, contextlib.redirect_stderr(io.StringIO()):

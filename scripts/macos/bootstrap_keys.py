@@ -16,8 +16,9 @@ from capture_keys import (
 
 TOOLS = {
     name: "/usr/bin/" + name
-    for name in ("codesign", "xcrun", "ditto", "chmod", "xattr", "pgrep", "ps", "python3")
+    for name in ("codesign", "xcrun", "ditto", "xattr", "pgrep", "python3")
 }
+TOOLS.update(chmod="/bin/chmod", ps="/bin/ps")
 TOOLS["developer"] = "/usr/sbin/DevToolsSecurity"
 TOOLS["lsregister"] = (
     "/System/Library/Frameworks/CoreServices.framework/Frameworks/"
