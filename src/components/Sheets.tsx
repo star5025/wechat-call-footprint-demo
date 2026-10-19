@@ -208,10 +208,10 @@ export function Sheets() {
           )}
           </>}
           {isPagesDemo && <button className="setting-item" onClick={() => void clearDataset()}>
-            <span className="setting-icon lavender">↻</span><span><strong>重置演示</strong></span><i>›</i>
+            <span className="setting-icon lavender">↻</span><span><strong>重置</strong></span><i>›</i>
           </button>}
         </div>
-        <div className="local-note"><span>{isPagesDemo ? "✨" : "📁"}</span><p><strong>{isPagesDemo ? "虚构数据" : "保存情况"}</strong>{!isPagesDemo && <><br />{dataMode === "empty" ? "暂无本地记录" : "记录保存在本机"}</>}</p></div>
+        {!isPagesDemo && <div className="local-note"><span>📁</span><p><strong>保存情况</strong><br />{dataMode === "empty" ? "暂无本地记录" : "记录保存在本机"}</p></div>}
       </aside>
 
       {exportConfirmOpen && (

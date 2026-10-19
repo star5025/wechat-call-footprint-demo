@@ -29,11 +29,11 @@ function avatar(index: number): string {
 /** Entirely fabricated, fixed-date records for the public preview; never reads local data. */
 export function createDemoDataset(): AppDataset {
   const contacts: Contact[] = [
-    "云朵邮差（虚构）",
-    "月球园丁（虚构）",
-    "星砂船长（虚构）",
-    "薄荷机器人（虚构）",
-    "纸飞机向导（虚构）"
+    "云朵邮差",
+    "月球园丁",
+    "星砂船长",
+    "薄荷机器人",
+    "纸飞机向导"
   ].map((displayName, index) => ({
     id: `synthetic-demo-contact-${index + 1}`,
     accountId: ACCOUNT_ID,
@@ -133,7 +133,7 @@ export function createDemoDataset(): AppDataset {
     },
     account: {
       id: ACCOUNT_ID,
-      displayName: "演示旅人（虚构）",
+      displayName: "旅人",
       avatarRef: avatar(5)
     },
     contacts,

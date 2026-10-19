@@ -369,7 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRoute("home");
         await persistSettings({ ...DEFAULT_SETTINGS });
         setSettingsOpen(false);
-        notify("演示已重置");
+        notify("已重置");
         return;
       }
       await deleteDataset();

@@ -213,7 +213,7 @@ describe("synthetic Pages demonstration dataset", () => {
     expect(new Set(avatars).size).toBe(6);
     for (const person of people) {
       expect(person.id).toMatch(/^synthetic-demo-/);
-      expect(person.displayName).toContain("虚构");
+      expect(person.displayName).not.toMatch(/虚构|演示|合成/);
       expect(person.avatarRef).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
       const svg = decodeURIComponent(person.avatarRef!.split(",")[1]);
       expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');

@@ -42,20 +42,29 @@ const themeKey = "call-footprint.pages-demo.v1.theme";
 const settingsKey = "call-footprint.pages-demo.v1.settings.v1";
 const legacyDatasetKey = "call-footprint.dataset.v1";
 const bogusDataset = "{bogus legacy dataset: must never be parsed}";
-const contacts = ["云朵邮差（虚构）", "月球园丁（虚构）", "星砂船长（虚构）", "薄荷机器人（虚构）", "纸飞机向导（虚构）"];
+const contacts = ["云朵邮差", "月球园丁", "星砂船长", "薄荷机器人", "纸飞机向导"];
+
+async function assertMinimalDemoLabel(page) {
+  const visibleText = await page.locator("body").innerText();
+  assert.equal((visibleText.match(/演示/g) ?? []).length, 1, "Only the header may label the demo");
+  assert.doesNotMatch(visibleText, /虚构|合成/);
+  assert.equal(await page.locator(".topbar .pages-demo-tag").textContent(), "演示");
+}
 
 async function waitForHome(page) {
   await page.locator(".launch-screen").waitFor({ state: "hidden" });
   await page.locator(".app main .memory-hero").waitFor({ state: "visible" });
-  await page.getByRole("heading", { level: 1, name: /演示旅人（虚构）$/ }).waitFor();
+  await page.getByRole("heading", { level: 1, name: /旅人$/ }).waitFor();
   await page.locator(".soft-column").first().waitFor();
   assert.equal(await page.locator(".first-use-card").count(), 0, "Synthetic records must render, not an empty state");
+  await assertMinimalDemoLabel(page);
 }
 
 async function navigate(page, label, heading) {
   await page.getByRole("navigation", { name: "主导航" }).getByRole("button", { name: new RegExp(label + "$") }).click();
   await page.getByRole("heading", { level: 1, name: heading }).waitFor();
   await page.locator(".pill-nav button[aria-current='page']").filter({ hasText: label }).waitFor();
+  await assertMinimalDemoLabel(page);
 }
 
 async function selectContact(page, index) {
@@ -206,9 +215,10 @@ try {
 
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor();
-  await page.locator(".settings-sheet").getByRole("button", { name: /重置演示/ }).waitFor();
+  await page.locator(".settings-sheet").getByRole("button", { name: /重置/ }).waitFor();
   assert.equal(await page.locator(".settings-sheet .setting-item").count(), 1, "Only demo reset belongs in demo settings");
-  await page.locator(".settings-sheet").getByText("虚构数据", { exact: true }).waitFor();
+  assert.equal(await page.locator(".settings-sheet .local-note").count(), 0);
+  assert.doesNotMatch(await page.locator(".settings-sheet").innerText(), /演示|虚构|合成/);
   await assertNoRealDataControls(page);
   await page.keyboard.press("Escape");
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor({ state: "hidden" });
@@ -305,7 +315,7 @@ try {
     page.waitForEvent("download", { timeout: 30_000 }),
     exportDialog.getByRole("button", { name: "确认", exact: true }).click()
   ]);
-  assert.match(download.suggestedFilename(), /\.png$/i);
+  assert.equal(download.suggestedFilename(), `${contacts[0]}-通话总结.png`);
   assert.equal(await download.failure(), null, "PNG download must complete successfully");
   const downloadPath = await download.path();
   assert.ok(downloadPath, "Download must be backed by a file, not just an export toast");
@@ -316,7 +326,7 @@ try {
   await download.delete();
   await exportDialog.waitFor({ state: "hidden" });
 
-  await navigate(page, "首页", /演示旅人（虚构）$/);
+  await navigate(page, "首页", /旅人$/);
   await selectContact(page, 1);
   await navigate(page, "记录", "通话记录");
   await page.locator(".feed-card").first().waitFor();
@@ -324,7 +334,7 @@ try {
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor();
   await assertNoRealDataControls(page);
-  await page.locator(".settings-sheet").getByRole("button", { name: /重置演示/ }).click();
+  await page.locator(".settings-sheet").getByRole("button", { name: /重置/ }).click();
   await waitForHome(page);
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor({ state: "hidden" });
   assert.equal(await page.locator(".contact-switch strong").textContent(), contacts[0], "Reset must restore the first synthetic contact");
@@ -348,7 +358,7 @@ try {
   await assertNoRealDataControls(page);
   await navigate(page, "通话日历", "通话日历");
   await assertNoOverflow(page, "mobile calendar");
-  await navigate(page, "首页", /演示旅人（虚构）$/);
+  await navigate(page, "首页", /旅人$/);
   await waitForHome(page);
   assert.deepEqual(failures, [], "Static Pages demo must complete all interactions without runtime/network errors");
   console.log(`Cloud headless Pages smoke passed for ${metadata.commit}`);
