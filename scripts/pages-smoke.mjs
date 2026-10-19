@@ -306,6 +306,50 @@ try {
   assert.match(await column.locator(".soft-column-tip").textContent(), /^\d+$/);
 
   await navigate(page, "通话日历", "通话日历");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  for (const theme of ["dark", "light"]) {
+    await page.getByRole("button", { name: theme === "dark" ? "切换到黑夜模式" : "切换到日间模式", exact: true }).click();
+    await page.waitForFunction((theme) => document.documentElement.dataset.theme === theme, theme);
+    const metricMotion = await page.evaluate(async () => {
+      const cells = [...document.querySelectorAll(".wall-cell.has-record")];
+      const summary = document.querySelector(".wall-summary").textContent;
+      const before = cells.map((cell) => getComputedStyle(cell).backgroundColor);
+      const sample = [];
+      const buttons = document.querySelectorAll(".wall-metric-toggle button");
+      buttons[1].click();
+      const started = performance.now();
+      while (performance.now() - started < 650) {
+        await new Promise(requestAnimationFrame);
+        sample.push(cells.map((cell) => getComputedStyle(cell).backgroundColor));
+      }
+      const after = cells.map((cell) => getComputedStyle(cell).backgroundColor);
+      const changed = before.map((color, index) => color !== after[index] ? index : -1).filter((index) => index >= 0);
+      const slider = getComputedStyle(document.querySelector(".wall-metric-toggle"), "::before");
+      return {
+        changed: changed.length,
+        interpolated: changed.some((index) => sample.some((colors) => colors[index] !== before[index] && colors[index] !== after[index])),
+        reused: cells.every((cell) => cell.isConnected),
+        summaryUnchanged: summary === document.querySelector(".wall-summary").textContent,
+        selected: buttons[1].getAttribute("aria-pressed"),
+        sliderTransform: slider.transform,
+        sliderDuration: slider.transitionDuration
+      };
+    });
+    assert.ok(metricMotion.changed > 0 && metricMotion.interpolated, `${theme}: heatmap colors must interpolate rather than jump`);
+    assert.ok(metricMotion.reused && metricMotion.summaryUnchanged, "Metric switches must retain calendar cells and summary data");
+    assert.equal(metricMotion.selected, "true");
+    assert.notEqual(metricMotion.sliderTransform, "none");
+    assert.equal(metricMotion.sliderDuration, "0.38s");
+    // Reverse direction mid-transition, then leave the original metric selected.
+    await page.locator(".wall-metric-toggle").getByRole("button", { name: "按时长", exact: true }).click();
+    await page.locator(".wall-metric-toggle").getByRole("button", { name: "按次数", exact: true }).click();
+    await page.locator(".wall-metric-toggle").getByRole("button", { name: "按时长", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll(".wall-cell")].every((cell) => cell.getAnimations().length === 0));
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  assert.ok(await page.locator(".wall-cell.has-record").first().evaluate((cell) =>
+    getComputedStyle(cell).transitionDuration.split(",").every((duration) => parseFloat(duration) < .01)),
+    "Metric color transitions must respect reduced motion");
   await page.locator(".contribution-card").scrollIntoViewIfNeeded();
   const day = page.getByRole("button", { name: /^10 月 19 日，/ });
   await day.hover();
