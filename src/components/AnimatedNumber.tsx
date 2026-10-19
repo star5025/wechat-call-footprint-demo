@@ -46,7 +46,7 @@ export function createNumberAnimator(
     const started = scheduler.now();
     const tick = (time: number) => {
       frame = null;
-      const progress = Math.min(1, Math.max(0, (time - started) / 480));
+      const progress = Math.min(1, Math.max(0, (time - started) / 720));
       display(progress === 1 ? value : Math.round(from + (value - from) * (1 - (1 - progress) ** 3)));
       if (progress < 1) frame = scheduler.request(tick);
     };

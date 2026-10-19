@@ -69,7 +69,7 @@ describe("numeric animation engine", () => {
     (initial, target) => {
       const { animator, advance, values, pending } = setup(initial);
       animator.update(target);
-      for (const elapsed of [0, 16, 64, 160, 160, 79, 1]) advance(elapsed);
+      for (const elapsed of [0, 16, 64, 160, 160, 319, 1]) advance(elapsed);
       expect(values.at(-1)).toBe(target);
       expect(pending.size).toBe(0);
       let previous = initial;
@@ -84,12 +84,12 @@ describe("numeric animation engine", () => {
     },
   );
 
-  it("uses a 480ms ease-out cubic curve", () => {
+  it("uses a 720ms ease-out cubic curve", () => {
     const { animator, advance, values, pending } = setup(0);
     animator.update(1000);
-    advance(240);
+    advance(360);
     expect(values).toEqual([875]);
-    advance(240);
+    advance(360);
     expect(values).toEqual([875, 1000]);
     expect(pending.size).toBe(0);
   });
@@ -97,15 +97,15 @@ describe("numeric animation engine", () => {
   it("retargets from the displayed integer, including a direction reversal", () => {
     const { animator, advance, values, cancelled, pending } = setup(0);
     animator.update(100);
-    advance(240);
+    advance(360);
     expect(values).toEqual([88]);
     animator.update(20);
     expect(cancelled).toHaveLength(1);
     advance(0);
     expect(values).toEqual([88]);
-    advance(240);
+    advance(360);
     expect(values.at(-1)).toBe(29);
-    advance(240);
+    advance(360);
     expect(values.at(-1)).toBe(20);
     expect(pending.size).toBe(0);
   });
@@ -113,11 +113,11 @@ describe("numeric animation engine", () => {
   it("does not restart an ongoing animation when its target is unchanged", () => {
     const { animator, advance, values, cancelled, pending } = setup(0);
     animator.update(1000);
-    advance(240);
+    advance(360);
     animator.update(1000);
     expect(cancelled).toHaveLength(0);
     expect(pending.size).toBe(1);
-    advance(240);
+    advance(360);
     expect(values.at(-1)).toBe(1000);
     expect(pending.size).toBe(0);
   });

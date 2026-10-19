@@ -218,7 +218,10 @@ try {
     });
     window.__numberObserver.observe(document.querySelector(".big-number"), { attributes: true, attributeFilter: ["data-number-current"] });
     Element.prototype.animate = function (...args) {
-      if (this.matches("[data-contact-content]")) window.__contactAnimationCount += 1;
+      if (this.matches("[data-contact-content]")) {
+        window.__contactAnimationCount += 1;
+        if (Number(args[0][0].opacity) < .9) throw new Error("Contact fade must not flash the background");
+      }
       return window.__originalAnimate.apply(this, args);
     };
   });
@@ -327,13 +330,39 @@ try {
   await day.click();
   await page.locator(".day-preview").waitFor({ state: "visible" });
   const wallCard = await page.locator(".contribution-card").elementHandle();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => {
+    const element = document.querySelector(".wall-stat strong [data-number-target]");
+    window.__wallNumberStart = Number(element.dataset.numberCurrent);
+    window.__wallNumberFrames = [];
+    window.__wallNumberObserver = new MutationObserver(() => window.__wallNumberFrames.push(Number(element.dataset.numberCurrent)));
+    window.__wallNumberObserver.observe(element, { attributes: true, attributeFilter: ["data-number-current"] });
+  });
   await selectContact(page, 1);
+  await page.waitForFunction(() => [...document.querySelectorAll(".wall-summary [data-number-target]")]
+    .every((element) => element.dataset.numberCurrent === element.dataset.numberTarget));
+  const wallMotion = await page.evaluate(() => {
+    window.__wallNumberObserver.disconnect();
+    return { start: window.__wallNumberStart, frames: window.__wallNumberFrames,
+      end: Number(document.querySelector(".wall-stat strong [data-number-target]").dataset.numberTarget) };
+  });
+  assert.ok(wallMotion.frames.some((value) => value > Math.min(wallMotion.start, wallMotion.end)
+    && value < Math.max(wallMotion.start, wallMotion.end)), "Calendar statistics must show intermediate values");
+  assert.equal(wallMotion.frames.at(-1), wallMotion.end);
+  assert.equal(await page.locator(".wall-stat strong [data-number-target]").count(), 4);
+  assert.ok(await page.locator(".wall-stat strong [data-number-target]").first().evaluate((element) =>
+    getComputedStyle(element).display === "inline" && getComputedStyle(element).fontSize === getComputedStyle(element.parentElement).fontSize),
+    "Numeric wrappers must retain calendar statistic typography");
   assert.equal(await page.locator(".day-preview").count(), 0, "Previous contact's day detail must clear");
   assert.equal(await page.getByRole("tooltip").count(), 0, "Previous contact's tooltip must clear");
   assert.ok(await wallCard.evaluate((element) => element === document.querySelector(".contribution-card")),
     "Calendar must update in place, preserving range and controls");
   assert.ok(await page.locator(".contribution-card.mode-year").count());
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await selectContact(page, 0);
+  assert.ok(await page.locator(".wall-summary [data-number-target]").evaluateAll((elements) =>
+    elements.every((element) => element.dataset.numberCurrent === element.dataset.numberTarget)),
+    "Calendar statistics must snap for reduced motion");
   await wallCard.dispose();
 
   await navigate(page, "小发现", "关于你们的小发现");

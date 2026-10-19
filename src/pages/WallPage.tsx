@@ -2,12 +2,17 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ContributionDay, DateRange } from "@contracts/models";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ThemeDatePicker, ThemeMonthPicker } from "@/components/ThemeDatePicker";
 import { ThemeSelect } from "@/components/ThemeSelect";
 import { buildWall, contributionLevel, filterEvents, summarize } from "@/data/analytics";
 import type { WallMetric, WallMode } from "@/domain";
 import { useApp } from "@/state/AppContext";
 import { formatCompactDuration, formatDate, formatDuration } from "@/utils/format";
+
+const formatCount = (value: number | null) => String(value ?? 0);
+const formatTotalDuration = (value: number | null) => formatCompactDuration(value ?? 0);
+const formatLongestDuration = (value: number | null) => value === null ? "暂无" : formatDuration(value);
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const isoDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -97,10 +102,10 @@ export function WallPage() {
       </section>
 
       <section className="wall-summary" data-contact-content aria-label={`${title}通话统计`}>
-        <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong>{formatCompactDuration(summary.totalDurationSeconds)}</strong><span>{summary.connectedCount} 次接通 · {title}</span></article>
-        <article className="wall-stat"><b>📞</b><small>通话次数</small><strong>{summary.connectedCount} 次</strong></article>
-        <article className="wall-stat"><b>📅</b><small>有记录日期</small><strong>{summary.activeDayCount} 天</strong><span>所选范围共 {rangeDayCount} 天</span></article>
-        <article className="wall-stat"><b>🏆</b><small>最长通话时长</small><strong>{summary.longestDurationSeconds ? formatDuration(summary.longestDurationSeconds) : "暂无"}</strong><span>{longestEvent?.startedAt ? formatDate(longestEvent.startedAt.slice(0, 10)) : "范围内暂无接通"}</span></article>
+        <article className="wall-stat"><b>⏱️</b><small>接通总时长</small><strong><AnimatedNumber value={summary.totalDurationSeconds} format={formatTotalDuration} reducedMotion={settings.reducedMotion} /></strong><span><AnimatedNumber value={summary.connectedCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次接通 · {title}</span></article>
+        <article className="wall-stat"><b>📞</b><small>通话次数</small><strong><AnimatedNumber value={summary.connectedCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 次</strong></article>
+        <article className="wall-stat"><b>📅</b><small>有记录日期</small><strong><AnimatedNumber value={summary.activeDayCount} format={formatCount} reducedMotion={settings.reducedMotion} /> 天</strong><span>所选范围共 {rangeDayCount} 天</span></article>
+        <article className="wall-stat"><b>🏆</b><small>最长通话时长</small><strong><AnimatedNumber value={summary.longestDurationSeconds || null} format={formatLongestDuration} reducedMotion={settings.reducedMotion} /></strong><span>{longestEvent?.startedAt ? formatDate(longestEvent.startedAt.slice(0, 10)) : "范围内暂无接通"}</span></article>
       </section>
 
       <section className={`contribution-card mode-${mode}`} data-contact-content>

@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     mainRef.current?.querySelectorAll<HTMLElement>("[data-contact-content]").forEach((element) => {
       if (typeof element.animate !== "function") return;
       // Opacity only: transforms would change the containing block of fixed popovers.
-      animations.push(element.animate([{ opacity: .45 }, { opacity: 1 }], {
+      animations.push(element.animate([{ opacity: .94 }, { opacity: 1 }], {
         duration: 280,
         easing: "cubic-bezier(.22,.61,.36,1)"
       }));
