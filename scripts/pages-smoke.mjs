@@ -346,6 +346,13 @@ try {
     await page.locator(".wall-metric-toggle").getByRole("button", { name: "按时长", exact: true }).click();
     await page.waitForFunction(() => [...document.querySelectorAll(".wall-cell")].every((cell) => cell.getAnimations().length === 0));
   }
+  assert.equal(await page.evaluate(() => {
+    const app = document.querySelector(".app");
+    app.classList.add("reduced-motion");
+    const duration = getComputedStyle(document.querySelector(".wall-metric-toggle"), "::before").transitionDuration;
+    app.classList.remove("reduced-motion");
+    return duration;
+  }), "0s", "In-app reduced motion must also disable the metric slider");
   await page.emulateMedia({ reducedMotion: "reduce" });
   assert.ok(await page.locator(".wall-cell.has-record").first().evaluate((cell) =>
     getComputedStyle(cell).transitionDuration.split(",").every((duration) => parseFloat(duration) < .01)),
