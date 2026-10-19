@@ -50,13 +50,13 @@ export function HomePage() {
       {!events.length ? (
         <section className="empty-state-card first-use-card">
           <span className="empty-art">📥</span>
-          <span className="soft-label">尚未导入数据</span>
-          <h2>导入微信通话记录</h2>
+          <span className="soft-label">还没有通话记录</span>
+          <h2>添加微信通话记录</h2>
           <div className="empty-state-actions">
             <button className="primary-action" disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
-              {wechatScanning ? "正在扫描，请稍候…" : "扫描本机微信"}
+              {wechatScanning ? "正在读取，请稍候…" : "读取微信通话记录"}
             </button>
-            <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>导入 JSON</button>
+            <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>从文件打开</button>
           </div>
         </section>
       ) : (

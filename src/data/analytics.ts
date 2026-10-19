@@ -150,7 +150,7 @@ export function buildWall(
       id: "source_coverage",
       state: missingDays ? "warning" : "good",
       score: days.length ? (days.length - missingDays) / days.length : null,
-      summary: missingDays ? `${missingDays} 天没有可读取的数据覆盖。` : "所选日期均有数据覆盖。",
+      summary: missingDays ? `${missingDays} 天没有找到记录。` : "所选日期的记录完整。",
       affectedEventCount: 0
     }],
     issueCount: missingDays ? 1 : 0,

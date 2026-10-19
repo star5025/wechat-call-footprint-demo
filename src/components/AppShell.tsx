@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <Navigation />
           <div className="top-actions">
-            <span className={`demo-tag ${dataMode === "imported" ? "imported-tag" : ""}`}>{dataMode === "empty" ? "开始使用" : "本地数据"}</span>
+            <span className={`demo-tag ${dataMode === "imported" ? "imported-tag" : ""}`}>{dataMode === "empty" ? "开始使用" : "已保存"}</span>
             <button
               className={`theme-toggle ${theme === "dark" ? "dark" : ""}`}
               aria-label={theme === "dark" ? "切换到日间模式" : "切换到黑夜模式"}

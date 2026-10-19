@@ -125,10 +125,10 @@ fn load_json(path: &Path) -> Result<Option<Value>, String> {
     let content = fs::read_to_string(path).map_err(|error| error.to_string())?;
     match serde_json::from_str(&content) {
         Ok(value) => Ok(Some(value)),
-        Err(error) => {
+        Err(_) => {
             let corrupt = path.with_extension(format!("corrupt.{}.json", std::process::id()));
             let _ = fs::rename(path, corrupt);
-            Err(format!("本地设置文件已损坏并被隔离：{error}"))
+            Err("上次保存的内容无法打开，已自动重置。".into())
         }
     }
 }
@@ -171,9 +171,10 @@ fn load_dataset(app: AppHandle) -> Result<Option<String>, String> {
 #[tauri::command]
 fn save_dataset(app: AppHandle, content: String) -> Result<(), String> {
     if content.len() as u64 > MAX_IMPORT_BYTES {
-        return Err("数据超过 50 MB 限制。".into());
+        return Err("通话记录太多，暂时无法保存。".into());
     }
-    serde_json::from_str::<Value>(&content).map_err(|_| "数据不是有效 JSON。".to_string())?;
+    serde_json::from_str::<Value>(&content)
+        .map_err(|_| "这个文件无法保存，请稍后重试。".to_string())?;
     atomic_write(&config_dir(&app)?.join(DATASET_FILE), content.as_bytes())
 }
 
@@ -189,17 +190,18 @@ fn delete_dataset(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn choose_import_file() -> Result<Option<ImportFileResult>, String> {
     let file = rfd::AsyncFileDialog::new()
-        .add_filter("通话足迹 JSON", &["json"])
-        .set_title("选择要导入的通话数据")
+        .add_filter("通话足迹记录", &["json"])
+        .set_title("选择之前保存的通话记录")
         .pick_file()
         .await;
     let Some(file) = file else { return Ok(None) };
     let path = file.path();
     let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
     if metadata.len() > MAX_IMPORT_BYTES {
-        return Err("首版最多导入 50 MB 的 JSON 文件。".into());
+        return Err("这个文件太大，请选择较小的通话记录文件。".into());
     }
-    let content = fs::read_to_string(path).map_err(|_| "文件必须是 UTF-8 JSON。".to_string())?;
+    let content =
+        fs::read_to_string(path).map_err(|_| "无法打开这个文件，请重新选择。".to_string())?;
     Ok(Some(ImportFileResult {
         file_name: path
             .file_name()
@@ -217,16 +219,16 @@ async fn export_json(
     content: String,
 ) -> Result<Option<ExportResult>, String> {
     if content.len() as u64 > MAX_IMPORT_BYTES {
-        return Err("导出内容超过 50 MB 限制。".into());
+        return Err("通话记录太多，暂时无法一次保存。".into());
     }
     let safe_name = Path::new(&suggested_name)
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or("call-footprint.json");
     let file = rfd::AsyncFileDialog::new()
-        .add_filter("JSON", &["json"])
+        .add_filter("通话足迹记录", &["json"])
         .set_file_name(safe_name)
-        .set_title("导出通话足迹数据")
+        .set_title("保存通话记录文件")
         .save_file()
         .await;
     let Some(file) = file else { return Ok(None) };

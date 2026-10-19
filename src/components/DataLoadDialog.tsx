@@ -97,7 +97,6 @@ export function DataLoadDialog() {
           >
             <i style={{ width: `${displayedProgress}%` }} />
           </div>
-          <small>根据当前处理阶段平滑估算，请不要关闭应用</small>
         </section>
       </div>
     );
@@ -148,7 +147,7 @@ export function DataLoadDialog() {
         )}
 
         {dataLoadSuccess!.warnings.length > 0 && (
-          <div className="load-success-warning">部分数据需要留意：{dataLoadSuccess!.warnings[0]}</div>
+          <div className="load-success-warning">有些记录可能不完整：{dataLoadSuccess!.warnings[0]}</div>
         )}
       </section>
     </div>

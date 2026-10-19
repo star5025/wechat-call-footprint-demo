@@ -17,15 +17,16 @@ describe("dataset validation", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("rejects malformed JSON", () => {
+  it("rejects unreadable files with a plain-language message", () => {
     const result = parseDataset("{not-json");
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain("无法解析");
+    expect(result.errors[0]).toContain("无法打开这个文件");
   });
 
-  it("rejects unsupported contract majors", () => {
+  it("rejects files from unsupported versions without internal terminology", () => {
     const result = validateDataset({ ...TEST_DATASET, contractVersion: "2.0" });
     expect(result.valid).toBe(false);
-    expect(result.errors.join(" ")).toContain("契约主版本");
+    expect(result.errors.join(" ")).toContain("其他版本");
+    expect(result.errors.join(" ")).not.toContain("契约");
   });
 });

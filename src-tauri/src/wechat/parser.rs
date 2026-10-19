@@ -85,20 +85,16 @@ pub fn parse_snapshot(
         }
     }
     if failed_shards > 0 {
-        warnings.push(format!(
-            "有 {failed_shards} 个消息分片未能解析，统计结果标记为部分覆盖。"
-        ));
+        warnings.push("部分较早的通话记录暂时无法读取，统计结果可能不完整。".into());
     }
     if partial_shards > 0 {
-        warnings.push(format!(
-            "有 {partial_shards} 个消息分片的 WAL 未通过完整校验，已使用最近一次完整主库快照。"
-        ));
+        warnings.push("最近的部分通话记录可能还未包含在本次统计中。".into());
     }
     if contact_wal_omitted {
-        warnings.push("联系人库的 WAL 未通过完整校验，少量最近联系人名称可能尚未更新。".into());
+        warnings.push("少量最近联系人名称可能尚未更新。".into());
     }
     if parsed_calls.is_empty() {
-        return Err("数据库读取成功，但没有找到可识别的微信通话记录。".into());
+        return Err("没有找到可显示的微信通话记录。".into());
     }
 
     parsed_calls.sort_by(|left, right| right.event.started_at.cmp(&left.event.started_at));
@@ -113,7 +109,7 @@ pub fn parse_snapshot(
             match load_local_avatars(database, &plaintext_dir, key_material, &avatar_usernames) {
                 Ok(result) => result,
                 Err(_) => {
-                    warnings.push("本机头像库暂时无法解析，已使用联系人首字占位。".into());
+                    warnings.push("部分头像暂时无法显示，已使用名称首字代替。".into());
                     (HashMap::new(), false)
                 }
             }
@@ -121,7 +117,7 @@ pub fn parse_snapshot(
         None => (HashMap::new(), false),
     };
     if avatar_wal_omitted {
-        warnings.push("头像库的 WAL 未通过完整校验，部分最近头像可能尚未更新。".into());
+        warnings.push("部分最近头像可能尚未更新。".into());
     }
     let mut canonical_contacts = Vec::new();
     for username in used_usernames {
@@ -193,7 +189,7 @@ pub fn parse_snapshot(
             timezone: TIMEZONE.into(),
             source: DatasetSource {
                 kind: "normalized_file",
-                display_name: "本机微信只读扫描".into(),
+                display_name: "微信通话记录".into(),
                 source_version: Some(wechat_version.to_owned()),
             },
             account: Account {

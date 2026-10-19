@@ -159,11 +159,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setDataMode("empty");
           setActiveContactId(null);
         }
-      } catch (error) {
+      } catch {
         setDataset(createEmptyDataset());
         setDataMode("empty");
         setActiveContactId(null);
-        notify(`无法恢复本地状态：${String(error)}`);
+        notify("无法打开上次保存的内容，请重新读取或从文件打开");
       } finally {
         setReady(true);
       }
@@ -174,8 +174,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSettings(next);
     try {
       await saveSettings(next);
-    } catch (error) {
-      notify(`设置未能保存：${String(error)}`);
+    } catch {
+      notify("设置未能保存，请稍后重试");
     }
   }, [notify]);
 
@@ -186,7 +186,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       !promptedEmptyRoutes.current.has(nextRoute)
     ) {
       promptedEmptyRoutes.current.add(nextRoute);
-      notify("导入通话记录后可使用完整功能");
+      notify("添加通话记录后可使用完整功能");
     }
     if (nextRoute === "calls") setCallsDateFilter(null);
     setRoute(nextRoute);
@@ -214,8 +214,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ) => {
     await saveDataset(nextDataset);
     setDataLoading((current) => current ? {
-      title: "加载完成",
-      detail: "数据已完成验证并保存到本机",
+      title: "准备完成",
+      detail: "请选择要查看的联系人",
       progress: 100
     } : current);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
@@ -261,8 +261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDataLoadSuccess(null);
     setWechatScanning(true);
     setDataLoading({
-      title: "正在读取微信通话",
-      detail: "正在确认已登录的微信进程",
+      title: "正在读取通话记录",
+      detail: "请保持微信打开",
       progress: 0
     });
     try {
@@ -275,17 +275,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       const validation = validateDataset(result.dataset);
       if (!validation.valid || !validation.dataset) {
-        throw new Error(validation.errors[0] ?? "扫描结果未通过数据校验。");
+        throw new Error("读取到的内容暂时无法使用");
       }
       await finishDataLoad(
         validation.dataset,
-        "微信记录加载成功",
-        "加载完成。请选择要查看的联系人。",
+        "微信通话记录已准备好",
+        "请选择要查看的联系人。",
         result.summary.warnings
       );
-      notify(`加载成功：${result.summary.callEvents} 条通话记录`);
-    } catch (error) {
-      notify(`微信扫描未完成：${String(error)}`);
+      notify(`已读取 ${result.summary.callEvents} 条通话记录`);
+    } catch {
+      notify("暂时无法读取通话记录，请确认微信已登录并保持打开后重试");
     } finally {
       setDataLoading(null);
       setWechatScanning(false);
@@ -300,19 +300,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSettingsOpen(false);
       setDataLoadSuccess(null);
       setDataLoading({
-        title: "正在解析数据文件",
-        detail: "文件读取完成，正在检查格式与数据契约",
+        title: "正在读取通话记录",
+        detail: "请稍候",
         progress: 25
       });
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       if (file.sizeBytes > 50 * 1024 * 1024) {
-        setImportErrors(["首版最多导入 50 MB 的 JSON 文件。"]);
+        setImportErrors(["这个文件太大，请选择较小的通话记录文件。"]);
         return;
       }
       const result = parseDataset(file.content);
       setDataLoading({
-        title: "正在整理导入内容",
-        detail: "格式检查完成，正在统计联系人和通话记录",
+        title: "正在整理通话记录",
+        detail: "请稍候",
         progress: 70
       });
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
@@ -321,8 +321,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       setImportPreview(makeImportPreview(file.fileName, result.dataset, result.warnings));
-    } catch (error) {
-      setImportErrors([`无法读取文件：${String(error)}`]);
+    } catch {
+      setImportErrors(["无法打开这个文件，请重新选择。"]);
     } finally {
       setDataLoading(null);
     }
@@ -333,20 +333,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const preview = importPreview;
     setImportPreview(null);
     setDataLoading({
-      title: "正在保存通话数据",
-      detail: "正在将联系人和通话记录写入本机应用目录",
+      title: "正在保存通话记录",
+      detail: "请稍候",
       progress: 82
     });
     try {
       await finishDataLoad(
         preview.dataset,
-        "数据导入成功",
-        "数据已保存到本机。请选择要查看的联系人。",
+        "通话记录已打开",
+        "记录已保存在这台电脑上。请选择要查看的联系人。",
         preview.warnings
       );
-      notify(`加载成功：${preview.eventCount} 条通话记录`);
-    } catch (error) {
-      setImportErrors([`保存导入数据失败：${String(error)}`]);
+      notify(`已打开 ${preview.eventCount} 条通话记录`);
+    } catch {
+      setImportErrors(["保存失败，请稍后重试。"]);
     } finally {
       setDataLoading(null);
     }
@@ -362,9 +362,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRoute("home");
       await persistSettings({ ...settings, lastContactId: null, lastRoute: "home" });
       setSettingsOpen(false);
-      notify("本地通话数据已删除");
-    } catch (error) {
-      notify(`无法删除本地通话数据：${String(error)}`);
+      notify("已保存的通话记录已删除");
+    } catch {
+      notify("删除失败，请稍后重试")
     }
   }, [notify, persistSettings, settings]);
 

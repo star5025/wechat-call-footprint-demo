@@ -196,40 +196,27 @@ where
         let lock = SCAN_LOCK.get_or_init(|| Mutex::new(()));
         let _guard = lock
             .try_lock()
-            .map_err(|_| "已有微信扫描正在进行，请等待完成。".to_string())?;
+            .map_err(|_| "正在读取微信通话记录，请等待完成。".to_string())?;
 
-        emit(&mut report, 3, "定位微信", "正在确认已登录的微信进程");
-        let installation = windows::find_wechat_installation()?;
+        emit(&mut report, 3, "正在准备", "请保持微信打开");
+        let installation = windows::find_wechat_installation()
+            .map_err(|_| "没有找到正在使用的微信，请打开微信并保持登录后重试。".to_string())?;
         if installation.version != "4.1.15.13" {
-            return Err(format!(
-                "当前微信版本 {} 尚未通过安全适配验证，暂不自动读取。",
-                installation.version
-            ));
+            return Err("当前微信暂不支持，请更新通话足迹后重试。".into());
         }
-        emit(
-            &mut report,
-            10,
-            "定位数据",
-            "微信版本已确认，正在查找账号数据",
-        );
-        let account = discovery::discover_active_account()?;
+        emit(&mut report, 10, "正在查找通话记录", "请稍候");
+        let account = discovery::discover_active_account().map_err(|_| {
+            "没有找到可读取的通话记录，请先打开微信并进入任意聊天后重试。".to_string()
+        })?;
 
-        emit(
-            &mut report,
-            18,
-            "创建快照",
-            "正在只读复制联系人、头像和消息数据库",
-        );
-        let snapshot = discovery::create_snapshot(&account, app_cache_dir)?;
+        emit(&mut report, 18, "正在读取通话记录", "不会修改微信中的内容");
+        let snapshot = discovery::create_snapshot(&account, app_cache_dir)
+            .map_err(|_| "微信正在忙，请稍等几秒后重试。".to_string())?;
         let _cleanup = SnapshotCleanup(snapshot.root.clone());
-        emit(
-            &mut report,
-            32,
-            "验证适配器",
-            "数据库快照已完成，正在检查版本特征",
-        );
+        emit(&mut report, 32, "正在整理通话记录", "请稍候");
 
-        let xor_keys = crypto::extract_static_xor_keys(&installation.dll_path)?;
+        let xor_keys = crypto::extract_static_xor_keys(&installation.dll_path)
+            .map_err(|_| "暂时无法读取通话记录，请更新通话足迹后重试。".to_string())?;
         emit(
             &mut report,
             38,
@@ -245,6 +232,7 @@ where
             "解析记录",
             "密钥已验证，正在解密并解析通话与头像",
         );
+        emit(&mut report, 62, "正在整理联系人和头像", "请稍候");
 
         let parsed =
             parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)?;
@@ -354,7 +342,7 @@ where
             },
             dataset: parsed.dataset,
         };
-        emit(&mut report, 100, "加载完成", "本机微信通话数据已整理完成");
+        emit(&mut report, 100, "读取完成", "通话记录已准备好");
         Ok(result)
     }
 }
