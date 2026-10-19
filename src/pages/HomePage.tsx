@@ -54,9 +54,9 @@ export function HomePage() {
           <h2>添加微信通话记录</h2>
           <div className="empty-state-actions">
             <button className="primary-action" disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
-              {wechatScanning ? "正在读取，请稍候…" : "读取微信通话记录"}
+              {wechatScanning ? "读取中…" : "读取微信"}
             </button>
-            <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>从文件打开</button>
+            <button className="secondary-action" disabled={wechatScanning} onClick={() => void chooseImport()}>打开文件</button>
           </div>
         </section>
       ) : (

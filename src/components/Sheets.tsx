@@ -111,9 +111,9 @@ export function Sheets() {
   const exportData = async () => {
     try {
       const result = await exportJson("call-footprint-private.json", dataset);
-      if (result) notify("通话记录文件已保存");
+      if (result) notify("记录文件已保存");
     } catch {
-      notify("保存失败，请重新选择位置后再试");
+      notify("保存失败，请重选位置");
     }
   };
 
@@ -121,20 +121,20 @@ export function Sheets() {
     if (!summaryContactId || exportingSummary) return;
     const summary = buildContactCallSummary(dataset, summaryContactId);
     if (!summary || summary.attemptedCount === 0) {
-      notify("当前联系人还没有可生成总结的通话记录");
+      notify("暂无通话记录");
       return;
     }
     if (summary.hasBlockingQualityIssues) {
-      notify("当前联系人的记录需要确认，暂时无法生成准确长图");
+      notify("记录待确认，暂不能导出");
       return;
     }
     setExportingSummary(true);
     try {
       const image = await createContactSummaryPng(summary);
       const result = await exportPng(contactSummaryFileName(summary), image);
-      if (result) notify(appInfo?.isTauri === false ? "通话总结长图已开始下载" : "通话总结长图已保存");
+      if (result) notify(appInfo?.isTauri === false ? "长图已开始下载" : "长图已保存");
     } catch {
-      notify("长图生成失败，请稍后重试");
+      notify("生成失败，请重试");
     } finally {
       setExportingSummary(false);
     }
@@ -191,21 +191,21 @@ export function Sheets() {
         <header><div><h2>设置</h2></div><button onClick={() => setSettingsOpen(false)}>×</button></header>
         <div className="setting-list">
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
-            <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "正在读取微信记录" : "读取微信通话记录"}</strong><small>{wechatScanning ? "请保持微信打开" : "读取通话信息，不会修改微信内容"}</small></span><i>{wechatScanning ? "请稍候" : "›"}</i>
+            <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "读取中…" : "读取微信"}</strong><small>{wechatScanning ? "请保持微信打开" : "不改动微信内容"}</small></span><i>›</i>
           </button>
           <button className="setting-item" disabled={wechatScanning} onClick={() => void chooseImport()}>
-            <span className="setting-icon lavender">📥</span><span><strong>从文件打开记录</strong><small>选择之前保存的通话记录文件</small></span><i>›</i>
+            <span className="setting-icon lavender">📥</span><span><strong>打开文件</strong></span><i>›</i>
           </button>
           <button className="setting-item" disabled={wechatScanning} onClick={() => void exportData()}>
-            <span className="setting-icon peach">📤</span><span><strong>保存通话记录文件</strong><small>以后可以再次打开，包含联系人名称</small></span><i>›</i>
+            <span className="setting-icon peach">📤</span><span><strong>保存文件</strong><small>含联系人名称</small></span><i>›</i>
           </button>
           {dataMode === "imported" && (
             <button className="setting-item danger-setting" disabled={wechatScanning} onClick={() => setDeleteConfirmOpen(true)}>
-              <span className="setting-icon danger-icon">🗑️</span><span><strong>删除已保存的通话记录</strong><small>不会修改或删除微信中的内容</small></span><i>›</i>
+              <span className="setting-icon danger-icon">🗑️</span><span><strong>删除记录</strong><small>不改动微信内容</small></span><i>›</i>
             </button>
           )}
         </div>
-        <div className="local-note"><span>📁</span><p><strong>保存情况</strong><br />{dataMode === "empty" ? "还没有保存通话记录" : "通话记录已保存在这台电脑上"}</p></div>
+        <div className="local-note"><span>📁</span><p><strong>保存情况</strong><br />{dataMode === "empty" ? "暂无本地记录" : "记录保存在本机"}</p></div>
       </aside>
 
       {exportConfirmOpen && (

@@ -40,7 +40,7 @@ export function ImportDialog() {
             <div className="import-errors">{importErrors.map((error) => <p key={error}>{error}</p>)}</div>
             <div className="dialog-buttons">
               <button className="secondary-action" onClick={cancelImport}>关闭</button>
-              <button className="primary-action" onClick={() => void chooseImport()}>选择其他文件</button>
+              <button className="primary-action" onClick={() => void chooseImport()}>重新选择</button>
             </div>
           </>
         )}

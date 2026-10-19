@@ -269,15 +269,12 @@ where
         let lock = SCAN_LOCK.get_or_init(|| Mutex::new(()));
         let _guard = lock
             .try_lock()
-            .map_err(|_| "已有微信扫描正在进行，请等待完成。".to_string())?;
+            .map_err(|_| "[MACOS_SCAN_BUSY] 请等待读取完成".to_string())?;
 
         emit(&mut report, 3, "定位微信", "正在确认本机微信版本");
         let installation = macos::find_wechat_installation()?;
         if installation.version != "4.1.13" {
-            return Err(format!(
-                "当前 macOS 微信版本 {} 尚未通过安全适配验证，暂不自动读取。",
-                installation.version
-            ));
+            return Err("[MACOS_VERSION_UNSUPPORTED] 微信版本不支持".into());
         }
         emit(
             &mut report,
@@ -285,32 +282,11 @@ where
             "定位数据",
             "微信版本已确认，正在查找账号数据",
         );
-        let account = discovery::discover_active_account()?;
-        emit(
-            &mut report,
-            18,
-            "验证适配器",
-            "正在只读检查数据库密钥元数据",
-        );
-        let key_metadata = macos::inspect_key_metadata(&account)?;
-        let build = installation.build.as_deref().unwrap_or("未知");
-        let app_name = installation
-            .app_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("WeChat.app");
-        let key_status = if key_metadata.matching_records > 0 {
-            "已找到当前账号关联记录"
-        } else {
-            "尚未找到明确的账号关联记录"
-        };
+        let account = macos::discover_account()?;
+        emit(&mut report, 18, "检查记录", "检查密钥状态");
+        macos::inspect_key_metadata(&account)?;
         let Some(manifest_path) = std::env::var_os("CALL_FOOTPRINT_MACOS_KEY_MANIFEST") else {
-            return Err(format!(
-                "已识别 {app_name} {}（构建 {build}）、{} 个消息数据库和 {} 个密钥元数据文件，{key_status}。macOS 数据库密钥初始化尚未完成；本次没有读取聊天正文，也没有修改微信文件。",
-                installation.version,
-                account.message_databases.len(),
-                key_metadata.database_count
-            ));
+            return Err("[MACOS_MANIFEST_REQUIRED] 请先初始化密钥".into());
         };
         emit(&mut report, 24, "验证密钥", "正在逐库认证本机私有密钥");
         let key_material = macos::load_verified_key_manifest(&account, Path::new(&manifest_path))?;
@@ -320,11 +296,13 @@ where
             "创建快照",
             "密钥已验证，正在只读复制微信数据库",
         );
-        let snapshot = discovery::create_snapshot(&account, app_cache_dir)?;
+        let snapshot = discovery::create_snapshot(&account, app_cache_dir)
+            .map_err(|_| "[MACOS_SNAPSHOT_FAILED] 快照失败，请重试".to_string())?;
         let _cleanup = SnapshotCleanup(snapshot.root.clone());
-        emit(&mut report, 62, "解析记录", "正在解密并解析通话与头像");
+        emit(&mut report, 62, "解析记录", "正在整理通话与头像");
         let parsed =
-            parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)?;
+            parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)
+                .map_err(|_| "[MACOS_PARSE_FAILED] 记录解析失败".to_string())?;
         emit(
             &mut report,
             94,

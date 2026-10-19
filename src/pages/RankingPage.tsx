@@ -24,7 +24,7 @@ export function RankingPage() {
       {!ranking.length ? (
         <article className="gentle-note ranking-empty">
           <span>📭</span>
-          <div><strong>还没有可以排行的通话记录</strong></div>
+          <div><strong>暂无排行记录</strong></div>
         </article>
       ) : (
         <>

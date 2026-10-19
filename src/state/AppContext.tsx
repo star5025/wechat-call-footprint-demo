@@ -21,6 +21,7 @@ import { DEFAULT_SETTINGS } from "@/domain";
 import { createEmptyDataset } from "@/data/emptyDataset";
 import { chooseImportFile, deleteDataset, getAppInfo, loadDataset, loadSettings, saveDataset, saveSettings, scanWechatCalls } from "@/native/bridge";
 import { makeImportPreview, parseDataset, validateDataset } from "@/data/dataset";
+import { scanErrorMessage } from "@/native/scanErrors";
 
 interface ToastMessage {
   id: number;
@@ -284,8 +285,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         result.summary.warnings
       );
       notify(`已读取 ${result.summary.callEvents} 条通话记录`);
-    } catch {
-      notify("暂时无法读取通话记录，请确认微信已登录并保持打开后重试");
+    } catch (error) {
+      notify(scanErrorMessage(error));
     } finally {
       setDataLoading(null);
       setWechatScanning(false);

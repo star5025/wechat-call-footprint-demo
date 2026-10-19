@@ -791,7 +791,214 @@ fn digest_hex(value: &[u8], length: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::super::crypto::tests::{synthetic_database, SyntheticDirectory};
     use super::*;
+
+    fn synthetic_snapshot(
+        directory: &SyntheticDirectory,
+    ) -> (WechatSnapshot, WechatAccount, crypto::KeyMaterial) {
+        let contact_database = directory.0.join("contact.db");
+        synthetic_database(
+            &contact_database,
+            "CREATE TABLE contact(username TEXT, alias TEXT, nick_name TEXT, remark TEXT, local_type INTEGER);",
+            [0x81; 16], [0x91; 32],
+        );
+        let mut material = crypto::KeyMaterial::empty_raw_keyring();
+        material
+            .insert_verified_raw_key(&contact_database, &[0x91; 32])
+            .unwrap();
+        let mut message_databases = Vec::new();
+        let table = message_table("synthetic_peer");
+        for index in 0..2u8 {
+            let path = directory.0.join(format!("message_{index}.db"));
+            let sql = format!(
+                "CREATE TABLE Name2Id(user_name TEXT);
+                 INSERT INTO Name2Id VALUES ('synthetic_owner'), ('synthetic_peer');
+                 CREATE TABLE [{table}](local_id INTEGER, server_id INTEGER, local_type INTEGER, create_time INTEGER, real_sender_id INTEGER, message_content TEXT);
+                 INSERT INTO [{table}] VALUES (1, 100, 50, 1791302400, 1, '<msg>Duration: 00:20</msg><room_type>1</room_type>');
+                 INSERT INTO [{table}] VALUES (2, {}, 50, {}, 2, '<msg>Future protocol</msg><room_type>9</room_type>');
+                 INSERT INTO [{table}] VALUES (3, 900, 49, 1791302400, 1, 'not a call');",
+                200 + index as i32, 1791302460 + index as i64,
+            );
+            synthetic_database(&path, &sql, [0xa0 + index; 16], [0xb0 + index; 32]);
+            material
+                .insert_verified_raw_key(&path, &[0xb0 + index; 32])
+                .unwrap();
+            message_databases.push(path);
+        }
+        let snapshot = WechatSnapshot {
+            root: directory.0.clone(),
+            validation_database: message_databases[0].clone(),
+            message_databases: message_databases.clone(),
+            contact_database: contact_database.clone(),
+            head_image_database: None,
+        };
+        let account = WechatAccount {
+            account_name: "synthetic_owner_account".into(),
+            account_wxid: "synthetic_owner".into(),
+            message_databases,
+            contact_database,
+            head_image_database: None,
+        };
+        (snapshot, account, material)
+    }
+
+    #[test]
+    fn merges_shards_and_deduplicates_confirmed_server_ids() {
+        let directory = SyntheticDirectory::new();
+        let (snapshot, account, material) = synthetic_snapshot(&directory);
+        let parsed = parse_snapshot(&snapshot, &account, &material, "synthetic-test").unwrap();
+        assert!(parsed.warnings.is_empty());
+        assert_eq!(parsed.dataset.events.len(), 3);
+        assert_eq!(parsed.dataset.contacts.len(), 1);
+        assert_eq!(parsed.dataset.coverage[0].state, "complete");
+        assert!(parsed.dataset.coverage[0].reason_code.is_none());
+        assert_eq!(
+            parsed
+                .dataset
+                .events
+                .iter()
+                .filter(|event| event.connected_duration_seconds == Some(20))
+                .count(),
+            1
+        );
+        assert!(parsed
+            .dataset
+            .events
+            .iter()
+            .all(|event| event.dedup_confidence == "confirmed"));
+        assert!(parsed
+            .dataset
+            .events
+            .windows(2)
+            .all(|events| events[0].started_at >= events[1].started_at));
+    }
+
+    #[test]
+    fn corrupted_shard_preserves_readable_calls_and_marks_partial_coverage() {
+        let directory = SyntheticDirectory::new();
+        let (snapshot, account, material) = synthetic_snapshot(&directory);
+        std::fs::write(&snapshot.message_databases[1], b"synthetic truncated shard").unwrap();
+        let parsed = parse_snapshot(&snapshot, &account, &material, "synthetic-test").unwrap();
+        assert_eq!(parsed.dataset.events.len(), 2);
+        assert_eq!(parsed.dataset.coverage[0].state, "partial");
+        assert_eq!(
+            parsed.dataset.coverage[0].reason_code.as_deref(),
+            Some("message_shard_parse_failed")
+        );
+        assert_eq!(
+            parsed.warnings,
+            vec!["部分较早的通话记录暂时无法读取，统计结果可能不完整。"]
+        );
+        std::fs::write(&snapshot.message_databases[0], b"synthetic truncated shard").unwrap();
+        assert_eq!(
+            parse_snapshot(&snapshot, &account, &material, "synthetic-test")
+                .err()
+                .unwrap(),
+            "没有找到可显示的微信通话记录。"
+        );
+    }
+
+    #[test]
+    fn omitted_wal_marks_message_coverage_partial() {
+        let directory = SyntheticDirectory::new();
+        let (snapshot, account, material) = synthetic_snapshot(&directory);
+        std::fs::write(directory.0.join("message_0.db-wal"), [0u8; 33]).unwrap();
+        let parsed = parse_snapshot(&snapshot, &account, &material, "synthetic-test").unwrap();
+        assert_eq!(parsed.dataset.events.len(), 3);
+        assert_eq!(parsed.dataset.coverage[0].state, "partial");
+        assert_eq!(
+            parsed.dataset.coverage[0].reason_code.as_deref(),
+            Some("wal_omitted_after_validation")
+        );
+        assert_eq!(
+            parsed.warnings,
+            vec!["最近的部分通话记录可能还未包含在本次统计中。"]
+        );
+    }
+
+    #[test]
+    fn midnight_at_year_boundary_and_zero_or_unknown_duration() {
+        let offset = FixedOffset::east_opt(UTC_OFFSET_MINUTES * 60).unwrap();
+        let bubble = offset
+            .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
+            .unwrap()
+            .timestamp();
+        let (started, answered, ended) = derive_call_times(bubble, Some(1));
+        assert_eq!(started.as_deref(), Some("2026-12-31T23:59:59+08:00"));
+        assert_eq!(answered, started);
+        assert_eq!(ended.as_deref(), Some("2027-01-01T00:00:00+08:00"));
+        for duration in [None, Some(0)] {
+            let (started, answered, ended) = derive_call_times(bubble, duration);
+            assert_eq!(started, ended);
+            assert!(answered.is_none());
+        }
+        assert_eq!(derive_call_times(i64::MIN, Some(1)), (None, None, None));
+        let (_, answered, ended) = derive_call_times(bubble, Some(u64::MAX));
+        assert!(answered.is_none());
+        assert!(ended.is_some());
+    }
+
+    #[test]
+    fn unknown_payload_preserves_uncertainty_and_quality_flags() {
+        let account = WechatAccount {
+            account_name: "synthetic_account".into(),
+            account_wxid: "synthetic_owner".into(),
+            message_databases: Vec::new(),
+            contact_database: std::path::PathBuf::new(),
+            head_image_database: None,
+        };
+        let call = build_call(
+            &account,
+            &HashMap::new(),
+            "synthetic_peer",
+            None,
+            false,
+            false,
+            1791302400,
+            "<msg>Future protocol</msg><room_type>9</room_type>",
+            "account-test",
+            "source-test",
+            "synthetic.db",
+            "fingerprint-test",
+            "2026-10-01T00:00:00Z",
+        );
+        assert_eq!(call.event.media_type, "unknown");
+        assert_eq!(call.event.direction, "unknown");
+        assert_eq!(call.event.outcome, "unknown");
+        assert_eq!(call.event.connected_duration_seconds, None);
+        assert_eq!(
+            call.event.quality_flags,
+            vec![
+                "missing_duration",
+                "unknown_media_type",
+                "unknown_direction",
+                "unknown_outcome",
+                "unknown_contact",
+                "possible_duplicate"
+            ]
+        );
+        for room_type in ["-1", "9", "not-an-integer"] {
+            let payload = parse_call_payload(
+                &format!("<msg>Future protocol</msg><room_type>{room_type}</room_type>"),
+                "unknown",
+            );
+            assert_eq!(payload.media_type, "unknown");
+            assert_eq!(payload.outcome, "unknown");
+            assert!(payload.duration.is_none());
+        }
+    }
+
+    #[test]
+    fn corrupted_and_oversized_compressed_payloads_are_not_interpreted_as_calls() {
+        for bytes in [&b"invalid zstd"[..], &[0x28, 0xb5, 0x2f, 0xfd][..]] {
+            assert!(decode_content(bytes, 4).is_empty());
+        }
+        let oversized = zstd::stream::encode_all(&vec![b'x'; 256 * 1024 + 1][..], 1).unwrap();
+        assert!(decode_content(&oversized, 4).is_empty());
+        let valid = zstd::stream::encode_all(&b"<msg>Duration: 00:01</msg>"[..], 1).unwrap();
+        assert_eq!(decode_content(&valid, 4), "<msg>Duration: 00:01</msg>");
+    }
 
     #[test]
     fn resolves_account_name_from_self_contact() {

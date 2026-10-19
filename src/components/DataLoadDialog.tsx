@@ -116,7 +116,7 @@ export function DataLoadDialog() {
         {dataset.contacts.length > 0 ? (
           <>
             <div className="contact-choice-heading">
-              <div><strong>选择联系人</strong><small>选择后查看对应通话统计</small></div>
+              <div><strong>选择联系人</strong></div>
               {dataset.contacts.length > 6 && (
                 <label className="contact-choice-search">
                   <span>🔍</span>
@@ -135,13 +135,12 @@ export function DataLoadDialog() {
                   <i>查看 →</i>
                 </button>
               ))}
-              {!contacts.length && <p className="contact-choice-empty">没有找到匹配的联系人</p>}
+              {!contacts.length && <p className="contact-choice-empty">未找到联系人</p>}
             </div>
           </>
         ) : (
           <div className="no-contact-result">
-            <strong>没有可选择的联系人</strong>
-            <p>文件已经加载，但其中没有联系人通话记录。</p>
+            <strong>暂无联系人通话记录</strong>
             <button className="primary-action" onClick={finishWithoutContact}>返回首页</button>
           </div>
         )}

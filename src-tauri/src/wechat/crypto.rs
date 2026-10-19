@@ -493,8 +493,206 @@ fn quick_check(path: &Path) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
+    use aes::cipher::BlockEncrypt;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(in crate::wechat) struct SyntheticDirectory(pub PathBuf);
+
+    impl SyntheticDirectory {
+        pub(in crate::wechat) fn new() -> Self {
+            static NEXT: AtomicUsize = AtomicUsize::new(0);
+            let path = std::env::temp_dir().join(format!(
+                "call-footprint-synthetic-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            fs::create_dir(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for SyntheticDirectory {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn authenticate_page(
+        page: &mut [u8; PAGE_SIZE],
+        raw_key: &[u8; KEY_SIZE],
+        salt: &[u8],
+        number: u32,
+    ) {
+        let keys = derive_database_keys_from_raw(raw_key, salt);
+        let mut mac = <HmacSha512 as Mac>::new_from_slice(&*keys.authentication).unwrap();
+        let start = if number == 1 { SALT_SIZE } else { 0 };
+        let mac_end = PAGE_SIZE - RESERVE_SIZE + 16;
+        mac.update(&page[start..mac_end]);
+        mac.update(&number.to_le_bytes());
+        page[mac_end..].copy_from_slice(&mac.finalize().into_bytes());
+    }
+
+    // Every fixture and key is generated locally; no WeChat installation is consulted.
+    pub(in crate::wechat) fn synthetic_database(
+        path: &Path,
+        sql: &str,
+        salt: [u8; SALT_SIZE],
+        raw_key: [u8; KEY_SIZE],
+    ) {
+        let plaintext = path.with_extension("fixture-plain");
+        let connection = Connection::open(&plaintext).unwrap();
+        connection.execute_batch("PRAGMA page_size=4096;").unwrap();
+        let mut reserve = RESERVE_SIZE as i32;
+        // SQLite allocates the SQLCipher-style reserve before creating any tables.
+        let result = unsafe {
+            rusqlite::ffi::sqlite3_file_control(
+                connection.handle(),
+                std::ptr::null(),
+                rusqlite::ffi::SQLITE_FCNTL_RESERVE_BYTES,
+                (&mut reserve as *mut i32).cast(),
+            )
+        };
+        assert_eq!(result, rusqlite::ffi::SQLITE_OK);
+        connection.execute_batch(sql).unwrap();
+        connection.close().unwrap();
+        let bytes = fs::read(&plaintext).unwrap();
+        assert_eq!(bytes[20], RESERVE_SIZE as u8);
+        let cipher = Aes256::new_from_slice(&raw_key).unwrap();
+        let mut encrypted = Vec::new();
+        for (index, source) in bytes.chunks_exact(PAGE_SIZE).enumerate() {
+            let number = index as u32 + 1;
+            let start = if number == 1 { SALT_SIZE } else { 0 };
+            let end = PAGE_SIZE - RESERVE_SIZE;
+            let mut page = [0u8; PAGE_SIZE];
+            if number == 1 {
+                page[..SALT_SIZE].copy_from_slice(&salt);
+            }
+            let iv = [number as u8; 16];
+            page[end..end + 16].copy_from_slice(&iv);
+            let mut previous = iv;
+            for (input, output) in source[start..end]
+                .chunks_exact(16)
+                .zip(page[start..end].chunks_exact_mut(16))
+            {
+                let mut block = aes::Block::clone_from_slice(input);
+                for i in 0..16 {
+                    block[i] ^= previous[i];
+                }
+                cipher.encrypt_block(&mut block);
+                output.copy_from_slice(&block);
+                previous.copy_from_slice(&block);
+            }
+            authenticate_page(&mut page, &raw_key, &salt, number);
+            encrypted.extend_from_slice(&page);
+        }
+        fs::write(path, encrypted).unwrap();
+        fs::remove_file(plaintext).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_key_verified_for_another_database_salt() {
+        let directory = SyntheticDirectory::new();
+        let first = directory.0.join("first.db");
+        let second = directory.0.join("second.db");
+        synthetic_database(
+            &first,
+            "CREATE TABLE fixture(value);",
+            [0x11; 16],
+            [0x21; 32],
+        );
+        synthetic_database(
+            &second,
+            "CREATE TABLE fixture(value);",
+            [0x12; 16],
+            [0x22; 32],
+        );
+        let mut material = KeyMaterial::empty_raw_keyring();
+        material
+            .insert_verified_raw_key(&first, &[0x21; 32])
+            .unwrap();
+        assert_eq!(
+            material
+                .insert_verified_raw_key(&second, &[0x21; 32])
+                .unwrap_err(),
+            "候选数据库密钥未通过首页认证。"
+        );
+        assert_eq!(material.raw_key_count(), 1);
+        let output = directory.0.join("out.db");
+        assert_eq!(
+            decrypt_main_database(&second, &output, &material).unwrap_err(),
+            "当前数据库没有经过验证的 macOS 密钥。"
+        );
+        assert!(!output.exists());
+        material
+            .insert_verified_raw_key(&second, &[0x22; 32])
+            .unwrap();
+        decrypt_main_database(&second, &output, &material).unwrap();
+        assert!(quick_check(&output));
+    }
+
+    #[test]
+    fn rejects_wrong_resolved_key_and_corrupted_or_truncated_pages() {
+        let directory = SyntheticDirectory::new();
+        let source = directory.0.join("source.db");
+        let output = directory.0.join("out.db");
+        let salt = [0x41; 16];
+        let key = [0x51; 32];
+        synthetic_database(&source, "CREATE TABLE fixture(value);", salt, key);
+        let original = fs::read(&source).unwrap();
+        assert!(original.len() >= PAGE_SIZE * 2);
+        let wrong = KeyMaterial::RawKeysBySalt(HashMap::from([(salt, Zeroizing::new([0x52; 32]))]));
+        assert_eq!(
+            decrypt_main_database(&source, &output, &wrong).unwrap_err(),
+            "数据库首页认证失败。"
+        );
+        assert!(!output.exists());
+        let mut material = KeyMaterial::empty_raw_keyring();
+        material.insert_verified_raw_key(&source, &key).unwrap();
+        for (length, corrupt, expected) in [
+            (PAGE_SIZE - 1, false, "数据库首页不完整。"),
+            (PAGE_SIZE + 17, false, "数据库尾页不完整。"),
+            (original.len(), true, "数据库第 2 页认证失败。"),
+        ] {
+            let mut bytes = original[..length].to_vec();
+            if corrupt {
+                bytes[PAGE_SIZE + 100] ^= 1;
+            }
+            fs::write(&source, bytes).unwrap();
+            assert_eq!(
+                decrypt_main_database(&source, &output, &material).unwrap_err(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn malformed_wal_falls_back_to_an_intact_main_database() {
+        let directory = SyntheticDirectory::new();
+        let source = directory.0.join("source.db");
+        synthetic_database(
+            &source,
+            "CREATE TABLE fixture(value); INSERT INTO fixture VALUES (42);",
+            [0x61; 16],
+            [0x71; 32],
+        );
+        let mut material = KeyMaterial::empty_raw_keyring();
+        material
+            .insert_verified_raw_key(&source, &[0x71; 32])
+            .unwrap();
+        fs::write(directory.0.join("source.db-wal"), [0u8; 33]).unwrap();
+        let prepared =
+            prepare_plaintext_database(&source, &directory.0.join("plain"), &material).unwrap();
+        assert!(prepared.wal_omitted);
+        let connection = open_plaintext_database(&prepared.path).unwrap();
+        assert_eq!(
+            connection
+                .query_row("SELECT value FROM fixture", [], |row| row.get::<_, i64>(0))
+                .unwrap(),
+            42
+        );
+    }
 
     #[test]
     fn extracts_four_immediates_from_signature() {

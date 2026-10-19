@@ -34,7 +34,7 @@ export function ContactSwitcher() {
               <ContactAvatar contact={item} className="mini-avatar" />
               <span>
                 <strong>{item.displayName}</strong>
-                <small>{item.needsReview ? "身份需要确认" : "已识别联系人"}</small>
+                <small>{item.needsReview ? "待确认" : "已识别"}</small>
               </span>
               {item.id === activeContactId && <b>✅</b>}
             </button>
