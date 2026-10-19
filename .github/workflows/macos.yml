@@ -1,0 +1,65 @@
+name: macOS build and test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS (${{ matrix.target }})
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Check frontend
+        run: npm run check
+
+      - name: Test Rust on runner architecture
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Build unsigned macOS app
+        run: npm run tauri:build -- --config src-tauri/tauri.macos.conf.json --target ${{ matrix.target }} --bundles app --no-sign
+
+      - name: Archive app bundle
+        run: |
+          app=$(find "src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "call-footprint-${{ matrix.target }}-unsigned.zip"
+
+      - name: Upload unsigned app
+        uses: actions/upload-artifact@v4
+        with:
+          name: call-footprint-${{ matrix.target }}-unsigned
+          path: call-footprint-${{ matrix.target }}-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14
