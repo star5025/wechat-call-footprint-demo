@@ -42,7 +42,7 @@ const themeKey = "call-footprint.pages-demo.v1.theme";
 const settingsKey = "call-footprint.pages-demo.v1.settings.v1";
 const legacyDatasetKey = "call-footprint.dataset.v1";
 const bogusDataset = "{bogus legacy dataset: must never be parsed}";
-const contacts = ["云朵邮差", "月球园丁", "星砂船长", "薄荷机器人", "纸飞机向导"];
+const contacts = ["李明", "王磊", "张敏", "刘洋", "陈静"];
 
 async function assertMinimalDemoLabel(page) {
   const visibleText = await page.locator("body").innerText();
@@ -54,7 +54,7 @@ async function assertMinimalDemoLabel(page) {
 async function waitForHome(page) {
   await page.locator(".launch-screen").waitFor({ state: "hidden" });
   await page.locator(".app main .memory-hero").waitFor({ state: "visible" });
-  await page.getByRole("heading", { level: 1, name: /旅人$/ }).waitFor();
+  await page.getByRole("heading", { level: 1, name: /张伟$/ }).waitFor();
   await page.locator(".soft-column").first().waitFor();
   assert.equal(await page.locator(".first-use-card").count(), 0, "Synthetic records must render, not an empty state");
   await assertMinimalDemoLabel(page);
@@ -326,7 +326,7 @@ try {
   await download.delete();
   await exportDialog.waitFor({ state: "hidden" });
 
-  await navigate(page, "首页", /旅人$/);
+  await navigate(page, "首页", /张伟$/);
   await selectContact(page, 1);
   await navigate(page, "记录", "通话记录");
   await page.locator(".feed-card").first().waitFor();
@@ -358,7 +358,7 @@ try {
   await assertNoRealDataControls(page);
   await navigate(page, "通话日历", "通话日历");
   await assertNoOverflow(page, "mobile calendar");
-  await navigate(page, "首页", /旅人$/);
+  await navigate(page, "首页", /张伟$/);
   await waitForHome(page);
   assert.deepEqual(failures, [], "Static Pages demo must complete all interactions without runtime/network errors");
   console.log(`Cloud headless Pages smoke passed for ${metadata.commit}`);
