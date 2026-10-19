@@ -86,7 +86,14 @@ async function assertNoOverflow(page, label) {
     return {
       width: innerWidth,
       scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-      app: bounds(".app"), main: bounds("main"), nav: bounds(".pill-nav")
+      app: bounds(".app"), main: bounds("main"), nav: bounds(".pill-nav"),
+      outliers: [...document.querySelectorAll(".app main *")].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1);
+      }).slice(0, 12).map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { class: String(element.className), left: rect.left, right: rect.right, width: rect.width };
+      })
     };
   });
   assert.ok(dimensions.scrollWidth <= dimensions.width + 1, `${label}: document overflows horizontally: ${JSON.stringify(dimensions)}`);
