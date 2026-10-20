@@ -437,3 +437,30 @@ mod tests {
         let _ = fs::remove_dir_all(cache);
     }
 }
+
+#[cfg(all(test, target_os = "macos"))]
+mod macos_live_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires a logged-in local WeChat account and a private key manifest"]
+    fn scans_local_wechat_without_exposing_private_data() {
+        let cache =
+            std::env::temp_dir().join(format!("call-footprint-live-test-{}", std::process::id()));
+        let mut progress = Vec::new();
+        let result = scan_with_progress(&cache, |update| progress.push(update.percent))
+            .expect("local WeChat scan should succeed");
+
+        assert!(result.summary.database_shards > 0);
+        assert!(result.summary.call_events > 0);
+        assert_eq!(result.dataset.format, "call-footprint-export");
+        assert_eq!(progress.last(), Some(&100));
+        assert!(progress.windows(2).all(|pair| pair[0] <= pair[1]));
+        assert!(!cache
+            .join("wechat-snapshots")
+            .read_dir()
+            .map(|mut entries| entries.next().is_some())
+            .unwrap_or(false));
+        let _ = fs::remove_dir_all(cache);
+    }
+}
