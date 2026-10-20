@@ -204,7 +204,7 @@ try {
     await page.evaluate(() => window.__macSmoke.settle("mac_setup_scan", "MACOS_SETUP_CLEANUP_FAILED: RAW_SECRET /private/ci"));
     await idle(page);
     assert.match(await dialog.getByRole("alert").innerText(), /清理尚未完成/);
-    assert.ok(await dialog.getByRole("combobox").isDisabled());
+    assert.equal(await dialog.getByRole("combobox").count(), 0, "Unconfirmed recovery must discard the previous account status");
     assert.equal(await button(dialog, "读取").count(), 0);
     assert.equal(await button(dialog, "准备密钥").count(), 0);
     await page.evaluate(() => { window.__macSmoke.status.recoveryRequired = true; });

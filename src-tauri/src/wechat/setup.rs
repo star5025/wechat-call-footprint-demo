@@ -115,6 +115,12 @@ mod native {
     static CANCEL: AtomicBool = AtomicBool::new(false);
 
     pub struct Operation(std::sync::MutexGuard<'static, ()>);
+    impl Drop for Operation {
+        fn drop(&mut self) {
+            // The request belongs to this completed operation, not the next check.
+            CANCEL.store(false, Ordering::SeqCst);
+        }
+    }
     pub fn begin_operation() -> Result<Operation, String> {
         let guard = BUSY
             .get_or_init(|| Mutex::new(()))
@@ -903,6 +909,9 @@ mod native {
         clear_pending(&root)?;
         let mut result = status(&root, resources, false)?;
         if completed {
+            // Dependency/running-WeChat checks describe a future initialization,
+            // not failure of the one whose key and cleanup were just verified.
+            result.blocker = None;
             report(MacSetupProgress {
                 stage: "complete",
                 detail: "本机密钥已认证，临时副本已清理",
@@ -922,6 +931,20 @@ mod native {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cancellation_is_scoped_to_its_operation_and_queued_requests_are_consumed() {
+        let operation = begin_operation().expect("synthetic operation lease");
+        cancel();
+        assert!(cancel_requested());
+        drop(operation);
+        assert!(!cancel_requested());
+        drop(begin_operation().expect("next check must remain available"));
+        cancel();
+        assert!(matches!(begin_operation(), Err(error) if error.contains("MACOS_CANCELLED")));
+        drop(begin_operation().expect("queued cancellation is consumed once"));
+    }
 
     #[test]
     fn ipc_status_has_only_agreed_opaque_fields() {
