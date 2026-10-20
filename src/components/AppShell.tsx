@@ -5,12 +5,18 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { DataLoadDialog } from "@/components/DataLoadDialog";
 import { ScanConsentDialog } from "@/components/ScanConsentDialog";
 import { useApp } from "@/state/AppContext";
-import { applyTheme, readStoredTheme, saveTheme, type ColorTheme } from "@/theme";
+import { applyAppearance, applyTheme, readStoredAppearance, readStoredTheme, saveAppearance, saveTheme, type Appearance, type ColorTheme } from "@/theme";
 import { isPagesDemo } from "@/runtime";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId } = useApp();
   const [theme, setTheme] = useState<ColorTheme>(readStoredTheme);
+  const [appearance, setAppearance] = useState<Appearance>(readStoredAppearance);
+
+  useLayoutEffect(() => {
+    applyAppearance(appearance);
+    saveAppearance(appearance);
+  }, [appearance]);
   const mainRef = useRef<HTMLElement>(null);
   const previousContact = useRef(activeContactId);
 
@@ -68,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main ref={mainRef}>{children}</main>
       </div>
-      <Sheets />
+      <Sheets appearance={appearance} onAppearanceChange={setAppearance} />
       {!isPagesDemo && <ImportDialog />}
       <DataLoadDialog />
       {!isPagesDemo && <ScanConsentDialog />}

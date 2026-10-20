@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ContactAvatar";
+import { ThemeSelect } from "@/components/ThemeSelect";
+import type { Appearance } from "@/theme";
 import { buildContactCallSummary } from "@/data/contactSummary";
 import { contactSummaryFileName, createContactSummaryPng } from "@/export/contactSummaryImage";
 import { useApp } from "@/state/AppContext";
@@ -14,7 +16,10 @@ import {
   outcomeLabel
 } from "@/utils/format";
 
-export function Sheets() {
+export function Sheets({ appearance, onAppearanceChange }: {
+  appearance: Appearance;
+  onAppearanceChange: (appearance: Appearance) => void;
+}) {
   const {
     selectedEvent,
     closeEvent,
@@ -90,6 +95,7 @@ export function Sheets() {
           setExportConfirmOpen(false);
           return;
         }
+        if (document.querySelector('.settings-sheet.open .theme-select-trigger[aria-expanded="true"]')) return;
         closeEvent();
         setSettingsOpen(false);
       }
@@ -191,6 +197,10 @@ export function Sheets() {
       <aside className={`settings-sheet ${settingsOpen ? "open" : ""}`} aria-hidden={!settingsOpen}>
         <header><div><h2>设置</h2></div><button onClick={() => setSettingsOpen(false)}>×</button></header>
         <div className="setting-list">
+          <div className="appearance-setting">
+            <span>主题</span>
+            <ThemeSelect label="主题风格" value={appearance} options={[{ value: "default", label: "默认" }, { value: "github", label: "GitHub" }]} onChange={(value) => onAppearanceChange(value as Appearance)} />
+          </div>
           {!isPagesDemo && <>
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
             <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "读取中…" : "读取微信"}</strong><small>{wechatScanning ? "请保持微信打开" : "不改动微信内容"}</small></span><i>›</i>

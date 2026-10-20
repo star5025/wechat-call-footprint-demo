@@ -1,0 +1,258 @@
+/* Imported after styles.css; appearance and light/dark preference are independent. */
+:root[data-appearance="github"] {
+  color-scheme: light;
+  --paper: #ffffff;
+  --white: #ffffff;
+  --ink: #1f2328;
+  --muted: #59636e;
+  --line: #d1d9e0;
+  --lavender: #1f883d;
+  --purple: #0969da;
+  --lavender-soft: #ddf4ff;
+  --mint: #1f883d;
+  --mint-soft: #dafbe1;
+  --peach: #bc4c00;
+  --peach-soft: #fff1e5;
+  --blue: #0969da;
+  --blue-soft: #ddf4ff;
+  --yellow: #9a6700;
+  --yellow-soft: #fff8c5;
+  --shadow: none;
+  --shadow-hover: none;
+  --radius-xl: 12px;
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --gh-surface: #ffffff;
+  --gh-subtle: #f6f8fa;
+  --gh-hover: #eff2f5;
+  --gh-link: #0969da;
+  --gh-primary: #1f883d;
+  --gh-primary-hover: #1a7f37;
+  --gh-danger: #d1242f;
+  --gh-danger-soft: #ffebe9;
+  --gh-success: #116329;
+  --gh-warning: #7d4e00;
+  --gh-tooltip: #25292e;
+  --gh-tooltip-muted: #d1d9e0;
+  --gh-overlay: rgba(31, 35, 40, .4);
+  --gh-level-0: #eff2f5;
+  --gh-level-1: #9be9a8;
+  --gh-level-2: #40c463;
+  --gh-level-3: #30a14e;
+  --gh-level-4: #216e39;
+  --gh-heat-overlay: linear-gradient(145deg, rgba(255,255,255,.1), transparent 58%, rgba(0,0,0,.04));
+  --gh-failed-stripe: #ffcecb;
+  --donut-track: #d1d9e0;
+}
+
+:root[data-appearance="github"][data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0d1117;
+  --white: #161b22;
+  --ink: #f0f6fc;
+  --muted: #b1bac4;
+  --line: #3d444d;
+  --lavender: #238636;
+  --purple: #58a6ff;
+  --lavender-soft: #172d41;
+  --mint: #238636;
+  --mint-soft: #122d1e;
+  --peach: #ffa657;
+  --peach-soft: #332419;
+  --blue: #58a6ff;
+  --blue-soft: #172d41;
+  --yellow: #d29922;
+  --yellow-soft: #30280f;
+  --gh-surface: #161b22;
+  --gh-subtle: #151b23;
+  --gh-hover: #212830;
+  --gh-link: #58a6ff;
+  --gh-primary: #238636;
+  --gh-primary-hover: #218232;
+  --gh-danger: #ff7b72;
+  --gh-danger-soft: #3b1c21;
+  --gh-success: #7ee787;
+  --gh-warning: #e3b341;
+  --gh-tooltip: #252d38;
+  --gh-tooltip-muted: #d1d9e0;
+  --gh-overlay: rgba(1, 4, 9, .65);
+  --gh-level-0: #212830;
+  --gh-level-1: #0e4429;
+  --gh-level-2: #006d32;
+  --gh-level-3: #26a641;
+  --gh-level-4: #39d353;
+  --gh-heat-overlay: linear-gradient(145deg, rgba(255,255,255,.06), transparent 58%, rgba(0,0,0,.04));
+  --gh-failed-stripe: #67292f;
+  --donut-track: #3d444d;
+}
+
+:root[data-appearance="github"] body { background: var(--paper); color: var(--ink); }
+:root[data-appearance="github"] body :is(.ambient, .hero-glow, .night-sky) { display: none; }
+:root[data-appearance="github"] body .memory-hero::after,
+:root[data-appearance="github"] body .rank-card::before { content: none; }
+:root[data-appearance="github"] body .topbar {
+  background: var(--gh-subtle);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+}
+:root[data-appearance="github"] body :is(.brand, .pill-nav, .pill-nav button, .round-btn, .theme-toggle, .app.pages-demo .pages-download) { border-radius: 6px; box-shadow: none; }
+:root[data-appearance="github"] body :is(.pill-nav, .round-btn, .theme-toggle) { background: var(--gh-surface); border: 1px solid var(--line); }
+:root[data-appearance="github"] body :is(.brand:hover, .round-btn:hover, .pill-nav button:hover) { background: var(--gh-hover); color: var(--ink); }
+:root[data-appearance="github"] body .pill-nav button.active { color: var(--ink); background: var(--gh-hover); box-shadow: inset 0 -2px var(--gh-primary); }
+:root[data-appearance="github"] body :is(.demo-tag, .app.pages-demo .pages-download) { color: var(--gh-link); background: var(--blue-soft); }
+:root[data-appearance="github"] body :is(.brand-logo, .launch-mark, .data-loader .brand-logo) { background: var(--gh-hover); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+:root[data-appearance="github"] body .theme-toggle-track { background: var(--gh-hover); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-appearance="github"] body :is(.theme-toggle-thumb, .theme-toggle.dark .theme-toggle-thumb, .theme-toggle:hover .theme-toggle-thumb) { background: var(--gh-surface); box-shadow: none; }
+:root[data-appearance="github"] body .theme-toggle.dark .theme-toggle-track { background: var(--gh-hover); }
+
+/* Explicit component groups avoid disturbing chart geometry, avatars or animation. */
+:root[data-appearance="github"] body :is(.soft-panel, .contribution-card, .record-filter-panel, .gentle-note, .wall-empty-note, .memory-hero, .story-card, .discovery-card, .wall-stat, .rank-card, .empty-state-card) {
+  background: var(--gh-surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root[data-appearance="github"] body :is(.story-card:hover, .story-card:focus-within) { box-shadow: none; }
+:root[data-appearance="github"] body :is(.memory-hero, .wall-stat, .empty-state-card) { background: var(--gh-subtle); }
+:root[data-appearance="github"] body :is(.soft-label, .hero-chips>span, .person-profile>small, .discovery-tag, .night-card .discovery-tag) {
+  background: var(--gh-surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  backdrop-filter: none;
+  text-shadow: none;
+}
+:root[data-appearance="github"] body :is(.big-number, .big-number strong, .person, .sheet-duration strong) { color: var(--ink); }
+:root[data-appearance="github"] body :is(.big-number .duration-unit, .hero-copy p) { color: var(--muted); opacity: 1; }
+:root[data-appearance="github"] body :is(.person, .mini-avatar, .sheet-avatar, .rank-avatar, .ranking-list-avatar, .choice-avatar) {
+  color: var(--ink); background: var(--gh-hover); border-color: var(--line); box-shadow: none; border-radius: 10px;
+}
+:root[data-appearance="github"] body .contact-switch>.mini-avatar { border-radius: 10px; box-shadow: none; }
+:root[data-appearance="github"] body .sound-path i { background: var(--gh-primary); }
+:root[data-appearance="github"] body .float-note { color: var(--muted); }
+:root[data-appearance="github"] body :is(.hero-button, .primary-action, .apply-range, .summary-image-fab) {
+  background: var(--gh-primary); color: #ffffff; border: 1px solid rgba(31,35,40,.15); border-radius: 6px; box-shadow: none;
+}
+:root[data-appearance="github"] body :is(.hero-button:hover, .primary-action:hover:not(:disabled), .apply-range:hover:not(:disabled), .summary-image-fab:hover:not(:disabled)) { background: var(--gh-primary-hover); box-shadow: none; }
+:root[data-appearance="github"] body .hero-button span { background: transparent; color: #fff; }
+:root[data-appearance="github"] body :is(.story-icon, .section-emoji, .page-orb, .dialog-orb, .delete-confirm-orb, .success-mark, .first-use-card .empty-art, .setting-icon, .feed-icon, .call-bubble) { background: var(--gh-hover); color: var(--ink); border-radius: 8px; box-shadow: none; }
+:root[data-appearance="github"] body :is(.feed-icon.voice, .setting-icon.mint, .success-mark) { color: var(--gh-success); background: var(--mint-soft); }
+:root[data-appearance="github"] body :is(.feed-icon.missed, .setting-icon.danger-icon, .error-orb, .delete-confirm-orb) { color: var(--gh-danger); background: var(--gh-danger-soft); }
+:root[data-appearance="github"] body .ring-icon { box-shadow: none; }
+:root[data-appearance="github"] body :is(.soft-tabs, .range-switch, .wall-metric-toggle) { background: var(--gh-subtle); border: 1px solid var(--line); border-radius: 6px; box-shadow: none; }
+:root[data-appearance="github"] body :is(.soft-tabs button, .range-switch button, .wall-metric-toggle button),
+:root[data-appearance="github"] body .wall-metric-toggle::before { border-radius: 4px; }
+:root[data-appearance="github"] body :is(.soft-tabs button.active, .range-switch button.active) { color: #fff; background: var(--gh-primary); box-shadow: none; }
+:root[data-appearance="github"] body .wall-metric-toggle::before { background: var(--gh-primary); }
+:root[data-appearance="github"] body .wall-metric-toggle button.active { color: #fff; }
+:root[data-appearance="github"] body :is(.soft-column .bar, .soft-column:nth-child(even) .bar, .weekday i, .weekday.active i, .streak-dots i) { background: var(--gh-primary); box-shadow: none; border-radius: 6px; }
+:root[data-appearance="github"] body .streak-dots i.off { background: var(--gh-hover); }
+:root[data-appearance="github"] body .donut::after { background: var(--gh-surface); }
+
+/* Secondary surfaces, rows and controls. */
+:root[data-appearance="github"] body :is(.contact-switch, .contact-switch:hover, .contact-switch[aria-expanded="true"], .feed-card, .feed-card:hover, .search-round, .search-reveal, .contact-menu, .contact-menu-react) {
+  background: var(--gh-surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none;
+}
+:root[data-appearance="github"] body :is(.latest-call, .tiny-day span, .wall-control label, .wall-theme-field, .wall-day-call, .ranking-list>article, .detail-rows, .setting-item, .dialog-assurance, .import-file-name, .contact-choice-search, .contact-choice-list button, .no-contact-result, .calls-custom-range) {
+  background: var(--gh-subtle); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none;
+}
+:root[data-appearance="github"] body :is(.setting-item:hover, .latest-call:hover, .contact-option:hover, .contact-menu-react button:hover, .contact-choice-list button:hover, .contact-choice-list button:focus-visible) { background: var(--gh-hover); border-color: var(--line); }
+:root[data-appearance="github"] body :is(.contact-switch>b, .contact-switch[aria-expanded="true"]>b, .day-preview-actions button, .period-arrow, .theme-calendar header button, .theme-calendar footer button, .secondary-action, .sheet-close, .settings-sheet header button, .modal-close) {
+  color: var(--ink); background: var(--gh-hover); border-radius: 6px; box-shadow: none;
+}
+:root[data-appearance="github"] body :is(.tiny-day.active span, .theme-calendar-grid button.selected, .theme-month-grid button.selected, .theme-calendar header button:hover) { color: #fff; background: var(--gh-primary); box-shadow: none; }
+:root[data-appearance="github"] body :is(.link-btn, .settings-sheet header small, .date-filter-chip, .theme-select-menu>button b, .contact-choice-list button>i) { color: var(--gh-link); }
+:root[data-appearance="github"] body .date-filter-chip { background: var(--blue-soft); border-color: var(--line); border-radius: 6px; }
+:root[data-appearance="github"] body :is(.theme-select-trigger, .theme-date-trigger) { color: var(--ink); background: var(--gh-subtle); border: 1px solid var(--line); border-radius: 6px; }
+:root[data-appearance="github"] body :is(.theme-select-trigger:hover, .theme-select-trigger[aria-expanded="true"], .theme-date-trigger:hover, .theme-date-trigger[aria-expanded="true"]) { background: var(--gh-hover); border-color: var(--gh-link); box-shadow: none; }
+:root[data-appearance="github"] body .wall-theme-field :is(.theme-select-trigger, .theme-date-trigger) { background: transparent; border: 0; }
+:root[data-appearance="github"] body .theme-select-chevron { border-color: var(--muted); }
+:root[data-appearance="github"] body :is(.theme-select-menu, .theme-calendar) { color: var(--ink); background: var(--gh-surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; backdrop-filter: none; }
+:root[data-appearance="github"] body :is(.theme-select-menu>button, .theme-calendar-grid button, .theme-month-grid button, .contact-option, .contact-menu-react button) { border-radius: 6px; }
+:root[data-appearance="github"] body :is(.theme-select-menu>button:hover, .theme-select-menu>button.selected, .theme-select-menu>button:focus-visible, .theme-calendar-grid button:hover:not(:disabled), .theme-month-grid button:hover:not(:disabled)) { color: var(--ink); background: var(--gh-hover); }
+:root[data-appearance="github"] body .theme-month-grid button { background: var(--gh-subtle); }
+:root[data-appearance="github"] body :is(.theme-calendar-grid button.selected, .theme-month-grid button.selected):hover:not(:disabled) { color: #fff; background: var(--gh-primary-hover); }
+:root[data-appearance="github"] body .theme-calendar-grid button.outside { color: var(--muted); }
+:root[data-appearance="github"] body .appearance-setting { display: grid; grid-template-columns: minmax(0,1fr) minmax(120px,1fr); align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--gh-subtle); color: var(--ink); }
+:root[data-appearance="github"] body .appearance-setting .theme-select-menu { right: 0; left: auto; }
+
+/* Sheets, import/export, consent, progress and first-use dialogs. */
+:root[data-appearance="github"] body :is(.sheet-backdrop, .modal-backdrop) { background: var(--gh-overlay); backdrop-filter: none; }
+:root[data-appearance="github"] body :is(.detail-sheet, .settings-sheet, .import-dialog, .export-confirm-dialog, .delete-confirm-dialog, .scan-consent-dialog, .data-loading-dialog, .contact-choice-dialog) {
+  color: var(--ink); background: var(--gh-surface); border: 1px solid var(--line); box-shadow: none;
+}
+:root[data-appearance="github"] body :is(.import-dialog, .export-confirm-dialog, .delete-confirm-dialog, .scan-consent-dialog, .data-loading-dialog, .contact-choice-dialog) { border-radius: 12px; }
+:root[data-appearance="github"] body :is(.sheet-duration, .scan-consent-list>div, .import-stats div, .load-success-stats div) { color: var(--ink); background: var(--gh-subtle); border: 1px solid var(--line); border-radius: 8px; }
+:root[data-appearance="github"] body .detail-row { border-color: var(--line); }
+:root[data-appearance="github"] body :is(.local-note, .import-range, .scan-consent-note, .scan-setting.scanning, .quality-pill, .imported-tag) { color: var(--gh-success); background: var(--mint-soft); border-radius: 6px; }
+:root[data-appearance="github"] body :is(.local-note p, .scan-consent-note p, .load-success-stats strong) { color: var(--gh-success); }
+:root[data-appearance="github"] body :is(.import-warning, .load-success-warning, .quality-pill.warning, .demo-data-note) { color: var(--gh-warning); background: var(--yellow-soft); border-radius: 6px; }
+:root[data-appearance="github"] body :is(.import-errors, .delete-confirm-note) { color: var(--gh-danger); background: var(--gh-danger-soft); border-radius: 6px; }
+:root[data-appearance="github"] body .delete-confirm-note>span { color: var(--gh-danger); background: var(--gh-surface); }
+:root[data-appearance="github"] body .danger-setting strong { color: var(--gh-danger); }
+:root[data-appearance="github"] body :is(.danger-action, .danger-action:hover) { background: #cf222e; color: #fff; border-radius: 6px; box-shadow: none; }
+:root[data-appearance="github"] body .scan-consent-list>div>span { color: var(--gh-link); background: var(--blue-soft); border-radius: 6px; }
+:root[data-appearance="github"] body .actual-progress-track { background: var(--gh-hover); box-shadow: none; }
+:root[data-appearance="github"] body .actual-progress-track i { background: var(--gh-primary); box-shadow: none; }
+:root[data-appearance="github"] body .actual-progress-track i::after { background: none; }
+:root[data-appearance="github"] body .actual-progress-label strong { color: var(--gh-success); }
+:root[data-appearance="github"] body .data-loader>i { border-top-color: var(--gh-primary); }
+:root[data-appearance="github"] body .launch-screen { background: var(--paper); color: var(--ink); }
+:root[data-appearance="github"] body :is(.toast, .wall-hover-card, .soft-column-tip) { color: #fff; background: var(--gh-tooltip); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; backdrop-filter: none; }
+:root[data-appearance="github"] body .toast span { color: var(--gh-success); background: var(--mint-soft); border-color: var(--line); box-shadow: none; }
+:root[data-appearance="github"] body :is(.wall-hover-card strong, .wall-hover-card small) { color: var(--gh-tooltip-muted); }
+
+/* Readable secondary copy without multiplying opacity in night mode. */
+:root[data-appearance="github"] body :is(.date-line, .contact-switch small, .contact-switch em, .story-card small, .story-card p, .soft-column small, .chart-pop, .latest-main small, .latest-time small, .tiny-day small, .feed-day h3, .feed-main small, .feed-time small, .setting-item i, .wall-control label span, .wall-theme-field>span, .wall-contact small, .wall-month-label, .wall-weekdays, .wall-legend, .wall-footnote, .ranking-list-heading>span, .rank-number, .choice-contact-copy .choice-wechat-id, .data-loading-dialog>small, .empty-privacy-note, .launch-screen p, .weekday small, .discovery-card p, .discovery-card:not(.night-card) p, .night-card p, .donut span) { color: var(--muted); opacity: 1; }
+:root[data-appearance="github"] body .wall-stat:nth-child(n) { color: var(--ink); background: var(--gh-subtle); }
+:root[data-appearance="github"] body :is(.wall-stat small, .wall-stat>span) { color: var(--muted); opacity: 1; }
+:root[data-appearance="github"] body :is(.rank-card.rank-1, .rank-card.rank-2, .rank-card.rank-3) { color: var(--ink); background: var(--gh-surface); }
+:root[data-appearance="github"] body :is(.rank-duration, .ranking-list-duration strong) { color: var(--ink); }
+
+/* Only the base color changes with level; the alpha overlay stays identical.
+   Keep the existing 550ms color interpolation and interaction transforms. */
+:root[data-appearance="github"] body :is(.wall-cell, .wall-legend i) {
+  background-color: var(--gh-level-0);
+  background-image: var(--gh-heat-overlay);
+  border: 1px solid rgba(127,127,127,.16);
+  border-radius: 3px;
+  box-shadow: none;
+}
+:root[data-appearance="github"] body .wall-legend i { transition: background-color .55s cubic-bezier(.22,.61,.36,1); }
+:root[data-appearance="github"] body :is(.wall-cell, .wall-legend i):not(.future, .missing, .failed)[data-level="1"] { background-color: var(--gh-level-1); background-image: var(--gh-heat-overlay); }
+:root[data-appearance="github"] body :is(.wall-cell, .wall-legend i):not(.future, .missing, .failed)[data-level="2"] { background-color: var(--gh-level-2); background-image: var(--gh-heat-overlay); }
+:root[data-appearance="github"] body :is(.wall-cell, .wall-legend i):not(.future, .missing, .failed)[data-level="3"] { background-color: var(--gh-level-3); background-image: var(--gh-heat-overlay); }
+:root[data-appearance="github"] body :is(.wall-cell, .wall-legend i):not(.future, .missing, .failed)[data-level="4"] { background-color: var(--gh-level-4); background-image: var(--gh-heat-overlay); }
+:root[data-appearance="github"] body :is(.wall-cell.has-record, .wall-cell.actual, .wall-cell.actual:not(.has-record)) { box-shadow: none; }
+:root[data-appearance="github"] body :is(.wall-cell.has-record:hover, .wall-cell.has-record:focus-visible) { box-shadow: none; outline: 2px solid var(--gh-link); outline-offset: 2px; }
+:root[data-appearance="github"] body .wall-cell.partial { border-color: var(--gh-warning); border-style: dashed; }
+:root[data-appearance="github"] body :is(.wall-cell.future, .wall-cell.missing) { background: var(--gh-subtle); border: 1px dashed var(--line); box-shadow: none; }
+:root[data-appearance="github"] body .wall-cell.future { border-style: dotted; }
+:root[data-appearance="github"] body .wall-cell.failed { background: repeating-linear-gradient(45deg, var(--gh-failed-stripe), var(--gh-failed-stripe) 3px, var(--gh-danger-soft) 3px, var(--gh-danger-soft) 6px); border-color: var(--gh-danger); box-shadow: none; }
+:root[data-appearance="github"] body .wall-footnote b { background: var(--gh-primary); box-shadow: none; }
+:root[data-appearance="github"] body .wall-scroll { scrollbar-color: var(--line) transparent; }
+
+:root[data-appearance="github"] body :is(button, input, a):focus-visible { outline: 2px solid var(--gh-link); outline-offset: 3px; }
+:root[data-appearance="github"] body :is(.theme-select-menu>button:focus-visible, .theme-calendar-grid button:focus-visible) { outline-offset: -2px; box-shadow: inset 0 0 0 2px var(--gh-link); }
+:root[data-appearance="github"] body :is(.search-reveal input, .contact-choice-search input):focus-visible { outline: 2px solid var(--gh-link); outline-offset: 2px; border-radius: 4px; }
+
+/* Intrinsic desktop columns avoid the old 1fr/auto/1fr overlap.
+   Leave the existing mobile bottom navigation and page breakpoints intact. */
+@media (min-width: 901px) {
+  :root[data-appearance="github"] body .topbar { grid-template-columns: auto minmax(0,1fr) auto; gap: 12px; }
+  :root[data-appearance="github"] body .pill-nav { min-width: 0; max-width: 100%; }
+  :root[data-appearance="github"] body .pill-nav button { min-width: 0; padding-inline: 12px; white-space: nowrap; }
+  :root[data-appearance="github"] body :is(.brand, .top-actions) { min-width: 0; }
+  :root[data-appearance="github"] body .top-actions { gap: 6px; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  :root[data-appearance="github"] body .brand strong { display: none; }
+  :root[data-appearance="github"] body .pill-nav button { padding-inline: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-appearance="github"] body :is(.wall-cell, .wall-legend i) { transition: none; }
+}
+:root[data-appearance="github"] body.reduced-motion :is(.wall-cell, .wall-legend i),
+:root[data-appearance="github"] body .reduced-motion :is(.wall-cell, .wall-legend i) { transition: none; }

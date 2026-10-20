@@ -271,6 +271,57 @@ try {
   await page.keyboard.press("Escape");
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor({ state: "hidden" });
 
+  const appearanceKey = "call-footprint.pages-demo.v1.appearance";
+  await page.getByRole("button", { name: "打开设置", exact: true }).click();
+  await page.getByRole("button", { name: "主题风格：默认", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.locator('.settings-sheet[aria-hidden="false"]').waitFor();
+  assert.equal(await page.getByRole("button", { name: "主题风格：默认", exact: true }).getAttribute("aria-expanded"), "false");
+  assert.ok(await page.getByRole("button", { name: "主题风格：默认", exact: true }).evaluate((element) => element === document.activeElement));
+  await page.getByRole("button", { name: "主题风格：默认", exact: true }).click();
+  await page.getByRole("listbox", { name: "主题风格", exact: true }).getByRole("option", { name: "GitHub", exact: true }).click();
+  await page.waitForFunction((key) => document.documentElement.dataset.appearance === "github"
+    && localStorage.getItem(key) === "github", appearanceKey);
+  await page.keyboard.press("Escape");
+  for (const theme of ["dark", "light"]) {
+    await page.getByRole("button", { name: theme === "dark" ? "切换到黑夜模式" : "切换到日间模式", exact: true }).click();
+    await page.reload({ waitUntil: "networkidle" });
+    await waitForHome(page);
+    assert.equal(await page.locator("html").getAttribute("data-appearance"), "github");
+    assert.equal(await page.locator("html").getAttribute("data-theme"), theme);
+    const palette = await page.evaluate(() => ({
+      background: getComputedStyle(document.body).backgroundColor,
+      heroBackground: getComputedStyle(document.querySelector(".memory-hero")).backgroundColor,
+      meta: document.querySelector('meta[name="theme-color"]').content
+    }));
+    assert.equal(palette.background, theme === "dark" ? "rgb(13, 17, 23)" : "rgb(255, 255, 255)");
+    assert.equal(palette.meta, theme === "dark" ? "#0d1117" : "#ffffff");
+    for (const width of [390, 921, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await assertNoOverflow(page, `GitHub ${theme} home ${width}`);
+      await assertTopbarLayout(page, `GitHub ${theme} topbar ${width}`);
+      await assertDownloadEntry(page, `GitHub ${theme} download ${width}`);
+    }
+    await navigate(page, "通话日历", "通话日历");
+    await page.locator(".wall-cell.has-record").first().hover();
+    await page.getByRole("tooltip").waitFor({ state: "visible" });
+    await page.getByRole("heading", { name: "通话日历", exact: true }).hover();
+    await navigate(page, "记录", "通话记录");
+    await page.locator(".feed-card").first().click();
+    await page.locator('.detail-sheet[aria-hidden="false"]').waitFor();
+    await page.locator(".detail-sheet .sheet-close").click();
+    await navigate(page, "小发现", "关于你们的小发现");
+    await navigate(page, "排行", "通话时长排行");
+    await navigate(page, "首页", /小陈$/);
+  }
+  await page.getByRole("button", { name: "打开设置", exact: true }).click();
+  await page.getByRole("button", { name: "主题风格：GitHub", exact: true }).click();
+  await page.getByRole("listbox", { name: "主题风格", exact: true }).getByRole("option", { name: "默认", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.reload({ waitUntil: "networkidle" });
+  await waitForHome(page);
+  assert.equal(await page.locator("html").getAttribute("data-appearance"), "default");
+
   assert.ok(await page.locator('script[src$="/theme-init.js"]').count(), "Theme initializer must load");
   assert.ok(await page.locator('script[type="module"]').count(), "Built entry module must load");
   const metadataResponse = await page.request.get(`${origin}${pagesBase}build-info.json`);
