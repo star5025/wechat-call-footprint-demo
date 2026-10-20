@@ -51,6 +51,65 @@ pub fn discover_active_account() -> Result<WechatAccount, String> {
     })
 }
 
+// Managed onboarding never consults CLI overrides or chooses the most recent account.
+#[cfg(target_os = "macos")]
+pub fn enumerate_managed_accounts(root: &Path) -> Result<Vec<WechatAccount>, String> {
+    let error =
+        || "[MACOS_DATA_UNAVAILABLE] 无法安全读取微信账号，请检查文件访问权限。".to_string();
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+    if fs::canonicalize(root).map_err(|_| error())? != root {
+        return Err(error());
+    }
+    let mut accounts = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for (index, entry) in fs::read_dir(root).map_err(|_| error())?.enumerate() {
+        if index >= 1000 {
+            return Err(error());
+        }
+        let entry = entry.map_err(|_| error())?;
+        let path = entry.path();
+        if is_reserved_account_dir(&path) {
+            continue;
+        }
+        let metadata = fs::symlink_metadata(&path).map_err(|_| error())?;
+        if metadata.file_type().is_symlink() {
+            return Err(error());
+        }
+        if !metadata.is_dir() {
+            continue;
+        }
+        let storage = path.join("db_storage");
+        if !storage.exists() {
+            continue;
+        }
+        if fs::canonicalize(&storage).map_err(|_| error())? != storage {
+            return Err(error());
+        }
+        let messages = storage.join("message");
+        if messages.is_dir() {
+            let mut count = 0;
+            for item in fs::read_dir(&messages).map_err(|_| error())? {
+                let item = item.map_err(|_| error())?;
+                count += 1;
+                if count > 10000 || item.file_type().map_err(|_| error())?.is_symlink() {
+                    return Err(error());
+                }
+            }
+        }
+        if let Some(account) = inspect_account(path) {
+            super::macos::preflight_account(&account)?;
+            let canonical = fs::canonicalize(&account.contact_database).map_err(|_| error())?;
+            if seen.insert(canonical) {
+                accounts.push(account);
+            }
+        }
+    }
+    accounts.sort_by(|a, b| a.contact_database.cmp(&b.contact_database));
+    Ok(accounts)
+}
+
 fn candidate_data_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Some(configured) = env::var_os("CALL_FOOTPRINT_WECHAT_DATA_DIR") {

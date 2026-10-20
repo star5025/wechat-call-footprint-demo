@@ -11,6 +11,7 @@ import type {
 } from "@/domain";
 
 import { browserStoragePrefix, isPagesDemo } from "@/runtime";
+import type { MacSetupProgress, MacSetupStatus } from "@/macSetup";
 
 const isTauriRuntime = () =>
   !isPagesDemo && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -123,6 +124,51 @@ export async function scanWechatCalls(
   } finally {
     unlisten?.();
   }
+}
+
+function requireMacSetupRuntime(): void {
+  if (!isTauriRuntime()) throw new Error("MACOS_SETUP_NATIVE_REQUIRED");
+}
+
+export async function preflightMacSetup(): Promise<MacSetupStatus> {
+  requireMacSetupRuntime();
+  return invoke<MacSetupStatus>("mac_setup_check");
+}
+
+export async function initializeMacSetup(
+  accountId: string,
+  acknowledged: boolean,
+  onProgress?: (progress: MacSetupProgress) => void
+): Promise<MacSetupStatus> {
+  requireMacSetupRuntime();
+  const unlisten = onProgress
+    ? await listen<MacSetupProgress>("mac-setup-progress", (event) => onProgress(event.payload))
+    : null;
+  try {
+    return await invoke<MacSetupStatus>("mac_setup_initialize", { accountId, acknowledged });
+  } finally {
+    unlisten?.();
+  }
+}
+
+export async function scanMacSetup(
+  accountId: string,
+  onProgress?: (progress: WechatScanProgress) => void
+): Promise<WechatScanResult> {
+  requireMacSetupRuntime();
+  const unlisten = onProgress
+    ? await listen<WechatScanProgress>("wechat-scan-progress", (event) => onProgress(event.payload))
+    : null;
+  try {
+    return await invoke<WechatScanResult>("mac_setup_scan", { accountId });
+  } finally {
+    unlisten?.();
+  }
+}
+
+export async function cancelMacSetup(): Promise<void> {
+  requireMacSetupRuntime();
+  await invoke<void>("mac_setup_cancel");
 }
 
 export async function exportPng(

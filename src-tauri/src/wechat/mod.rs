@@ -6,6 +6,7 @@ mod discovery;
 mod macos;
 #[cfg_attr(target_os = "macos", allow(dead_code))]
 mod parser;
+pub mod setup;
 #[cfg(windows)]
 mod windows;
 
@@ -266,10 +267,7 @@ where
                 detail,
             });
         };
-        let lock = SCAN_LOCK.get_or_init(|| Mutex::new(()));
-        let _guard = lock
-            .try_lock()
-            .map_err(|_| "[MACOS_SCAN_BUSY] 请等待读取完成".to_string())?;
+        let _operation = setup::begin_operation()?;
 
         emit(&mut report, 3, "定位微信", "正在确认本机微信版本");
         let installation = macos::find_wechat_installation()?;
@@ -288,40 +286,15 @@ where
         let Some(manifest_path) = std::env::var_os("CALL_FOOTPRINT_MACOS_KEY_MANIFEST") else {
             return Err("[MACOS_MANIFEST_REQUIRED] 请先初始化密钥".into());
         };
-        emit(&mut report, 24, "验证密钥", "正在逐库认证本机私有密钥");
-        let key_material = macos::load_verified_key_manifest(&account, Path::new(&manifest_path))?;
-        emit(
-            &mut report,
-            32,
-            "创建快照",
-            "密钥已验证，正在只读复制微信数据库",
-        );
-        let snapshot = discovery::create_snapshot(&account, app_cache_dir)
-            .map_err(|_| "[MACOS_SNAPSHOT_FAILED] 快照失败，请重试".to_string())?;
-        let _cleanup = SnapshotCleanup(snapshot.root.clone());
-        emit(&mut report, 62, "解析记录", "正在整理通话与头像");
-        let parsed =
-            parser::parse_snapshot(&snapshot, &account, &key_material, &installation.version)
-                .map_err(|_| "[MACOS_PARSE_FAILED] 记录解析失败".to_string())?;
-        emit(
-            &mut report,
-            94,
-            "整理数据",
-            "解析完成，正在生成联系人和通话统计",
-        );
-        let result = WechatScanResult {
-            summary: WechatScanSummary {
-                wechat_version: installation.version,
-                account_label: "当前登录账号".into(),
-                database_shards: snapshot.message_databases.len(),
-                contacts_with_calls: parsed.dataset.contacts.len(),
-                call_events: parsed.dataset.events.len(),
-                warnings: parsed.warnings,
-            },
-            dataset: parsed.dataset,
-        };
-        emit(&mut report, 100, "读取完成", "通话记录已准备好");
-        Ok(result)
+        macos::scan_account(
+            &account,
+            Path::new(&manifest_path),
+            app_cache_dir,
+            &installation.version,
+            "当前登录账号",
+            report,
+            setup::cancel_requested,
+        )
     }
 }
 

@@ -101,11 +101,24 @@ class SyntheticTests(unittest.TestCase):
         process = MagicMock()
         process.poll.return_value = None
         process.wait.side_effect = [subprocess.TimeoutExpired('synthetic', 15), subprocess.TimeoutExpired('synthetic', 5), 0]
-        bootstrap.stop_capture(process)
+        with patch.object(bootstrap, 'emit') as emit, self.assertRaises(bootstrap.HelperError):
+            bootstrap.stop_capture(process)
+        emit.assert_called_once_with('manual_restore_required', reason='capture_forced_termination')
         process.send_signal.assert_called_once()
         process.terminate.assert_called_once()
         process.kill.assert_called_once()
         self.assertEqual(process.wait.call_count, 3)
+
+    def test_stop_capture_term_success_still_requires_recovery(self):
+        process = MagicMock()
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired('synthetic', 15), 0]
+        with patch.object(bootstrap, 'emit') as emit, self.assertRaises(bootstrap.HelperError):
+            bootstrap.stop_capture(process)
+        emit.assert_called_once_with('manual_restore_required', reason='capture_forced_termination')
+        process.terminate.assert_called_once()
+        process.kill.assert_not_called()
+        self.assertEqual(process.wait.call_count, 2)
 
     def test_stop_capture_already_exited(self):
         process = MagicMock()

@@ -4,12 +4,13 @@ import { Sheets } from "@/components/Sheets";
 import { ImportDialog } from "@/components/ImportDialog";
 import { DataLoadDialog } from "@/components/DataLoadDialog";
 import { ScanConsentDialog } from "@/components/ScanConsentDialog";
+import { MacSetupDialog } from "@/components/MacSetupDialog";
 import { useApp } from "@/state/AppContext";
 import { applyAppearance, applyTheme, readStoredAppearance, readStoredTheme, saveAppearance, saveTheme, type Appearance, type ColorTheme } from "@/theme";
 import { isPagesDemo } from "@/runtime";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId } = useApp();
+  const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId, macSetupOpen, closeMacSetup, completeMacSetup } = useApp();
   const [theme, setTheme] = useState<ColorTheme>(readStoredTheme);
   const [appearance, setAppearance] = useState<Appearance>(readStoredAppearance);
 
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!isPagesDemo && <ImportDialog />}
       <DataLoadDialog />
       {!isPagesDemo && <ScanConsentDialog />}
+      {!isPagesDemo && macSetupOpen && <MacSetupDialog onClose={closeMacSetup} onComplete={completeMacSetup} />}
       <div className="toast-zone" aria-live="polite">
         {toasts.map((toast) => <div className="toast" key={toast.id}><span>✅</span>{toast.text}</div>)}
       </div>

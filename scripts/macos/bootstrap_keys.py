@@ -57,12 +57,16 @@ def stop_capture(process):
     try:
         process.wait(timeout=15)
     except subprocess.TimeoutExpired:
+        # Forced capture termination can bypass LLDB descendant cleanup even if
+        # this direct child exits. The native supervisor must retain recovery.
+        emit("manual_restore_required", reason="capture_forced_termination")
         process.terminate()
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+        raise HelperError("forced capture termination requires manual recovery")
 
 
 def validate_bundle_links(bundle):

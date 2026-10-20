@@ -16,13 +16,16 @@ concurrency:
 
 jobs:
   macos:
-    name: macOS (${{ matrix.target }})
+    name: macOS (${{ matrix.target }}, unsigned internal)
+    # Both jobs test on an ARM host; x86_64 is cross-built, not Intel runtime-tested.
     runs-on: macos-15
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    env:
+      BUILD_TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,6 +41,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Confirm ARM runner (Intel target is cross-built only)
+        run: |
+          test "$(uname -m)" = arm64
+          rustc -vV
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -50,19 +58,110 @@ jobs:
       - name: Test macOS bootstrap without private data
         run: python3 -B -m unittest discover -s scripts/macos -p 'test_*.py' -v
 
-      - name: Build unsigned macOS app
-        run: npm run tauri:build -- --config src-tauri/tauri.macos.conf.json --target ${{ matrix.target }} --bundles app --no-sign
-
-      - name: Archive app bundle
+      - name: Check exact helper resource map (static, no helper execution)
         run: |
-          app=$(find "src-tauri/target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name '*.app' -print -quit)
-          test -n "$app"
-          ditto -c -k --sequesterRsrc --keepParent "$app" "call-footprint-${{ matrix.target }}-unsigned.zip"
+          python3 -B - <<'PY'
+          import json
+          from pathlib import Path
 
-      - name: Upload unsigned app
+          root = Path.cwd()
+          config_dir = root / 'src-tauri'
+          base = json.loads((config_dir / 'tauri.conf.json').read_text(encoding='utf-8'))
+          config = json.loads((config_dir / 'tauri.macos.conf.json').read_text(encoding='utf-8'))
+          expected = {
+              '../scripts/macos/bootstrap_keys.py': 'macos/bootstrap_keys.py',
+              '../scripts/macos/capture_keys.py': 'macos/capture_keys.py',
+          }
+          assert not base['bundle'].get('resources'), 'unexpected base resources'
+          assert config['bundle']['resources'] == expected, 'helper-only source-to-target map required'
+          schema = json.loads((root / 'node_modules/@tauri-apps/cli/config.schema.json').read_text(encoding='utf-8'))
+          variants = schema['definitions']['BundleResources']['anyOf']
+          assert any(item.get('type') == 'object' and item.get('additionalProperties', {}).get('type') == 'string'
+                     for item in variants), 'local schema must support a source-to-target map'
+          for source, destination in expected.items():
+              path = config_dir / source
+              assert path.is_file() and not path.is_symlink(), 'helper must be a regular source file'
+              assert path.resolve() == root / 'scripts' / destination, 'sources are relative to src-tauri'
+          print('Exact helper map verified; no directories, tests, secrets or user configurations bundled.')
+          PY
+
+      - name: Check installed Tauri CLI supports unsigned app and DMG
+        run: |
+          python3 -B - <<'PY'
+          import subprocess
+          result = subprocess.run(
+              ['node', 'node_modules/@tauri-apps/cli/tauri.js', 'build', '--help'],
+              check=True, capture_output=True, text=True,
+          )
+          help_text = result.stdout + result.stderr
+          for option in ('--bundles', '--no-sign'):
+              assert option in help_text, f'unsupported CLI option: {option}'
+          assert 'app' in help_text and 'dmg' in help_text, 'macOS bundle types unavailable'
+          print('Installed macOS CLI advertises app/dmg bundling and --no-sign.')
+          PY
+
+      - name: Build unsigned macOS app and DMG (internal validation only)
+        run: npm run tauri:build -- --config src-tauri/tauri.macos.conf.json --target "$BUILD_TARGET" --bundles app,dmg --no-sign
+
+      - name: Validate bundled helpers and executable architecture (no GUI launch)
+        run: |
+          python3 -B - <<'PY'
+          import os
+          import plistlib
+          import subprocess
+          from pathlib import Path
+
+          target = os.environ['BUILD_TARGET']
+          apps = list(Path(f'src-tauri/target/{target}/release/bundle/macos').glob('*.app'))
+          assert len(apps) == 1, 'expected exactly one app bundle'
+          app = apps[0]
+          resources = app / 'Contents/Resources'
+          entries = list(resources.rglob('*'))
+          assert resources.is_dir() and not resources.is_symlink(), 'invalid resource directory'
+          assert not any(path.is_symlink() for path in entries), 'no resource symlinks permitted'
+          files = {path.relative_to(resources).as_posix() for path in entries if path.is_file()}
+          expected = {'icon.icns', 'macos/bootstrap_keys.py', 'macos/capture_keys.py'}
+          assert files == expected, f'unexpected resource inventory: {sorted(files)}'
+          assert all(path.is_dir() or path.is_file() for path in entries), 'unexpected resource type'
+          for name in ('bootstrap_keys.py', 'capture_keys.py'):
+              assert (resources / 'macos' / name).read_bytes() == (Path('scripts/macos') / name).read_bytes(), 'helper bytes changed'
+          with (app / 'Contents/Info.plist').open('rb') as stream:
+              info = plistlib.load(stream)
+          name = info['CFBundleExecutable']
+          assert name and Path(name).name == name, 'invalid executable name'
+          binary = app / 'Contents/MacOS' / name
+          assert binary.is_file() and not binary.is_symlink() and os.access(binary, os.X_OK), 'missing executable'
+          kind = subprocess.check_output(['file', '-b', str(binary)], text=True)
+          assert 'Mach-O' in kind, 'not a Mach-O binary'
+          archs = subprocess.check_output(['lipo', '-archs', str(binary)], text=True).split()
+          expected_arch = {'aarch64-apple-darwin': 'arm64', 'x86_64-apple-darwin': 'x86_64'}[target]
+          assert archs == [expected_arch], f'wrong executable architecture: {archs}'
+          print(f'Helper-only resources (+ bundle icon), matching source bytes, Mach-O {expected_arch}: PASS')
+          PY
+
+      - name: Verify DMG and archive app (no mounting or GUI launch)
+        run: |
+          set -euo pipefail
+          bundle="src-tauri/target/$BUILD_TARGET/release/bundle"
+          apps=("$bundle"/macos/*.app)
+          dmgs=("$bundle"/dmg/*.dmg)
+          test "${#apps[@]}" -eq 1 && test -d "${apps[0]}"
+          test "${#dmgs[@]}" -eq 1 && test -f "${dmgs[0]}"
+          hdiutil verify "${dmgs[0]}"
+          mkdir -p artifacts
+          prefix="call-footprint-$BUILD_TARGET-unsigned"
+          ditto -c -k --sequesterRsrc --keepParent "${apps[0]}" "artifacts/$prefix.app.zip"
+          unzip -t "artifacts/$prefix.app.zip"
+          cp "${dmgs[0]}" "artifacts/$prefix.dmg"
+          cd artifacts
+          shasum -a 256 "$prefix.app.zip" "$prefix.dmg" > SHA256SUMS
+          shasum -a 256 -c SHA256SUMS
+
+      # Workflow artifacts only: no release action, signing secrets, or public download publishing.
+      - name: Upload unsigned internal validation artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: call-footprint-${{ matrix.target }}-unsigned
-          path: call-footprint-${{ matrix.target }}-unsigned.zip
+          name: call-footprint-${{ matrix.target }}-unsigned-internal
+          path: artifacts/
           if-no-files-found: error
           retention-days: 14

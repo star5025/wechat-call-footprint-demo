@@ -47,6 +47,10 @@ describe("Pages demo isolation", () => {
     await bridge.deleteDataset();
     expect(await bridge.exportJson("private.json", dataset)).toBeNull();
     await expect(bridge.scanWechatCalls()).rejects.toThrow();
+    await expect(bridge.preflightMacSetup()).rejects.toThrow();
+    await expect(bridge.initializeMacSetup("synthetic-account", true)).rejects.toThrow();
+    await expect(bridge.scanMacSetup("synthetic-account")).rejects.toThrow();
+    await expect(bridge.cancelMacSetup()).rejects.toThrow();
     expect(storage).toEqual(original);
     expect(invoke).not.toHaveBeenCalled();
     expect(await bridge.loadDataset()).toEqual(dataset);

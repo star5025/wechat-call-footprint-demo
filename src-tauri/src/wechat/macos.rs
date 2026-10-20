@@ -359,7 +359,7 @@ fn validate_manifest_metadata(metadata: &fs::Metadata, euid: u32) -> Result<(), 
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-fn open_private_manifest(path: &Path) -> Result<fs::File, String> {
+pub(super) fn open_private_manifest(path: &Path) -> Result<fs::File, String> {
     use std::{
         ffi::CString,
         os::{
@@ -483,6 +483,67 @@ pub fn load_verified_key_manifest(
             .map_err(|_| "[MACOS_MANIFEST_AUTH] 数据库密钥未通过逐库 HMAC 认证；清单可能不匹配或数据库已变化。".to_string())?;
     }
     Ok(keyring)
+}
+
+// The caller holds the shared operation lease. Cancellation is cooperative between
+// stages, not an interruption of SQLCipher decryption or SQLite parsing.
+pub fn scan_account<F, C>(
+    account: &WechatAccount,
+    manifest: &Path,
+    cache: &Path,
+    version: &str,
+    label: &str,
+    mut report: F,
+    cancelled: C,
+) -> Result<super::WechatScanResult, String>
+where
+    F: FnMut(super::WechatScanProgress),
+    C: Fn() -> bool,
+{
+    let checkpoint = || {
+        if cancelled() {
+            Err("[MACOS_CANCELLED] 已在安全阶段停止读取。".to_string())
+        } else {
+            Ok(())
+        }
+    };
+    let mut emit = |percent, stage, detail| {
+        report(super::WechatScanProgress {
+            percent,
+            stage,
+            detail,
+        })
+    };
+    let _guard = super::SCAN_LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .try_lock()
+        .map_err(|_| "[MACOS_SCAN_BUSY] 请等待读取完成。".to_string())?;
+    checkpoint()?;
+    emit(24, "验证密钥", "正在逐库认证本机私有密钥");
+    let keys = load_verified_key_manifest(account, manifest)?;
+    checkpoint()?;
+    emit(32, "创建快照", "正在只读复制微信数据库");
+    let snapshot = super::discovery::create_snapshot(account, cache)
+        .map_err(|_| "[MACOS_SNAPSHOT_FAILED] 快照失败，请重试。".to_string())?;
+    let _cleanup = super::SnapshotCleanup(snapshot.root.clone());
+    checkpoint()?;
+    emit(62, "解析记录", "正在整理通话与头像；取消将在阶段结束后生效");
+    let parsed = super::parser::parse_snapshot(&snapshot, account, &keys, version)
+        .map_err(|_| "[MACOS_PARSE_FAILED] 记录解析失败。".to_string())?;
+    checkpoint()?;
+    let result = super::WechatScanResult {
+        summary: super::WechatScanSummary {
+            wechat_version: version.to_owned(),
+            account_label: label.to_owned(),
+            database_shards: snapshot.message_databases.len(),
+            contacts_with_calls: parsed.dataset.contacts.len(),
+            call_events: parsed.dataset.events.len(),
+            warnings: parsed.warnings,
+        },
+        dataset: parsed.dataset,
+    };
+    emit(100, "读取完成", "通话记录已准备好");
+    Ok(result)
 }
 
 fn required_databases<'a>(

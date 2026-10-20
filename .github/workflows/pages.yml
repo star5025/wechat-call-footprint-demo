@@ -48,6 +48,9 @@ jobs:
       - name: Smoke test in cloud headless Chromium
         run: node scripts/pages-smoke.mjs
 
+      - name: Smoke test production Mac setup with mocked IPC
+        run: node scripts/mac-setup-smoke.mjs
+
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-pages-artifact@v3

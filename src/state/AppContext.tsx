@@ -15,7 +15,8 @@ import type {
   AppRoute,
   AppSettings,
   DataMode,
-  ImportPreview
+  ImportPreview,
+  WechatScanResult
 } from "@/domain";
 import { DEFAULT_SETTINGS } from "@/domain";
 import { createEmptyDataset } from "@/data/emptyDataset";
@@ -57,6 +58,9 @@ interface AppContextValue {
   settingsOpen: boolean;
   wechatScanning: boolean;
   scanConsentOpen: boolean;
+  macSetupOpen: boolean;
+  closeMacSetup: () => void;
+  completeMacSetup: (result: WechatScanResult) => Promise<void>;
   dataLoading: DataLoadingState | null;
   dataLoadSuccess: DataLoadSuccess | null;
   toasts: ToastMessage[];
@@ -95,6 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wechatScanning, setWechatScanning] = useState(false);
   const [scanConsentOpen, setScanConsentOpen] = useState(false);
+  const [macSetupOpen, setMacSetupOpen] = useState(false);
   const [dataLoading, setDataLoading] = useState<DataLoadingState | null>(null);
   const [dataLoadSuccess, setDataLoadSuccess] = useState<DataLoadSuccess | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
@@ -253,10 +258,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scanWechat = useCallback(async () => {
-    if (isPagesDemo || wechatScanning) return;
+    if (isPagesDemo || wechatScanning || macSetupOpen) return;
     setSettingsOpen(false);
-    setScanConsentOpen(true);
-  }, [wechatScanning]);
+    if (appInfo?.platform === "macos" && appInfo.isTauri) {
+      setMacSetupOpen(true);
+    } else {
+      setScanConsentOpen(true);
+    }
+  }, [appInfo, macSetupOpen, wechatScanning]);
+
+  const closeMacSetup = useCallback(() => setMacSetupOpen(false), []);
+
+  const completeMacSetup = useCallback(async (result: WechatScanResult) => {
+    if (isPagesDemo || appInfo?.platform !== "macos" || !appInfo.isTauri) {
+      throw new Error("MACOS_SETUP_NATIVE_REQUIRED");
+    }
+    const validation = validateDataset(result.dataset);
+    if (!validation.valid || !validation.dataset) throw new Error("MACOS_SETUP_RESULT_INVALID");
+    try {
+      await finishDataLoad(
+        validation.dataset,
+        "微信通话记录已准备好",
+        "请选择要查看的联系人。",
+        result.summary.warnings.length ? ["部分内容未能完整读取，请检查微信中的记录后重试。"] : []
+      );
+      notify(`已读取 ${validation.dataset.events.length} 条通话记录`);
+    } catch {
+      throw new Error("MACOS_SETUP_SAVE_FAILED");
+    }
+  }, [appInfo, finishDataLoad, notify]);
 
   const cancelWechatScan = useCallback(() => setScanConsentOpen(false), []);
 
@@ -402,6 +432,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     settingsOpen,
     wechatScanning,
     scanConsentOpen,
+    macSetupOpen,
+    closeMacSetup,
+    completeMacSetup,
     dataLoading,
     dataLoadSuccess,
     toasts,
@@ -424,7 +457,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearDataset,
     notify
   }), [
-    activeContactId, appInfo, callsDateFilter, cancelWechatScan, chooseImport, confirmImport, confirmWechatScan,
+    activeContactId, appInfo, callsDateFilter, cancelWechatScan, chooseImport, closeMacSetup, completeMacSetup, confirmImport, confirmWechatScan, macSetupOpen,
     dataLoadSuccess, dataLoading, dataMode, dataset, importErrors, clearDataset, finishWithoutContact,
     importPreview, navigate, notify, openCallsForDate, ready, route, scanConsentOpen, scanWechat, selectContact,
     selectLoadedContact, selectedEvent, settings, settingsOpen, toasts, wechatScanning

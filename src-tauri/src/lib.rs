@@ -287,26 +287,152 @@ async fn export_png(
 
 #[tauri::command]
 async fn scan_wechat_calls(app: AppHandle) -> Result<wechat::WechatScanResult, String> {
-    let cache_directory = app
-        .path()
-        .app_cache_dir()
-        .map_err(|error| error.to_string())?;
-    let progress_app = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        wechat::scan_with_progress(&cache_directory, |progress| {
-            let _ = progress_app.emit("wechat-scan-progress", progress);
+    // The old UI entry point must not bypass managed account/recovery state via
+    // developer environment overrides. Windows keeps its original behavior.
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        return Err("[MACOS_MANAGED_SETUP_REQUIRED] 请在应用中检查并选择账号后读取。".into());
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let cache_directory = app
+            .path()
+            .app_cache_dir()
+            .map_err(|error| error.to_string())?;
+        let progress_app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            wechat::scan_with_progress(&cache_directory, |progress| {
+                let _ = progress_app.emit("wechat-scan-progress", progress);
+            })
         })
-    })
-    .await
-    .map_err(|error| format!("微信扫描任务异常结束：{error}"))?
+        .await
+        .map_err(|error| format!("微信扫描任务异常结束：{error}"))?
+    }
+}
+
+#[tauri::command]
+async fn mac_setup_check(app: AppHandle) -> Result<wechat::setup::MacSetupStatus, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err(wechat::setup::MACOS_ONLY.into())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let config = app
+            .path()
+            .app_config_dir()
+            .map_err(|_| "[MACOS_STATE_UNAVAILABLE] 无法访问应用私有目录。")?;
+        let resources = app
+            .path()
+            .resource_dir()
+            .map_err(|_| "[MACOS_HELPER_MISSING] 安装包缺少初始化组件。")?;
+        tauri::async_runtime::spawn_blocking(move || wechat::setup::check(&config, &resources))
+            .await
+            .map_err(|_| "[MACOS_SETUP_FAILED] 检查任务异常结束，请重新检查。".to_string())?
+    }
+}
+
+#[tauri::command]
+async fn mac_setup_initialize(
+    app: AppHandle,
+    account_id: String,
+    acknowledged: bool,
+) -> Result<wechat::setup::MacSetupStatus, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, account_id, acknowledged);
+        Err(wechat::setup::MACOS_ONLY.into())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let config = app
+            .path()
+            .app_config_dir()
+            .map_err(|_| "[MACOS_STATE_UNAVAILABLE] 无法访问应用私有目录。")?;
+        let resources = app
+            .path()
+            .resource_dir()
+            .map_err(|_| "[MACOS_HELPER_MISSING] 安装包缺少初始化组件。")?;
+        tauri::async_runtime::spawn_blocking(move || {
+            wechat::setup::initialize(&config, &resources, &account_id, acknowledged, |progress| {
+                let _ = app.emit("mac-setup-progress", progress);
+            })
+        })
+        .await
+        .map_err(|_| {
+            "[MACOS_RECOVERY_REQUIRED] 初始化任务异常结束，请重新检查清理状态。".to_string()
+        })?
+    }
+}
+
+#[tauri::command]
+async fn mac_setup_scan(
+    app: AppHandle,
+    account_id: String,
+) -> Result<wechat::WechatScanResult, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, account_id);
+        Err(wechat::setup::MACOS_ONLY.into())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let config = app
+            .path()
+            .app_config_dir()
+            .map_err(|_| "[MACOS_STATE_UNAVAILABLE] 无法访问应用私有目录。")?;
+        let cache = app
+            .path()
+            .app_cache_dir()
+            .map_err(|_| "[MACOS_CACHE_UNAVAILABLE] 无法访问应用缓存目录。")?;
+        tauri::async_runtime::spawn_blocking(move || {
+            wechat::setup::scan(&config, &cache, &account_id, |progress| {
+                let _ = app.emit("wechat-scan-progress", progress);
+            })
+        })
+        .await
+        .map_err(|_| "[MACOS_SCAN_FAILED] 读取任务异常结束。".to_string())?
+    }
+}
+
+#[tauri::command]
+fn mac_setup_cancel() -> Result<(), String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err(wechat::setup::MACOS_ONLY.into())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        wechat::setup::cancel();
+        Ok(())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .on_window_event(|_window, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
+                if wechat::setup::busy() {
+                    api.prevent_close();
+                    wechat::setup::cancel();
+                }
+            }
+        })
         .setup(|app| {
             if let Ok(cache_directory) = app.path().app_cache_dir() {
                 wechat::cleanup_cache(&cache_directory);
+            }
+            #[cfg(target_os = "macos")]
+            if let (Ok(config), Ok(resources)) =
+                (app.path().app_config_dir(), app.path().resource_dir())
+            {
+                tauri::async_runtime::spawn_blocking(move || {
+                    wechat::setup::startup(&config, &resources)
+                });
             }
             Ok(())
         })
@@ -320,10 +446,23 @@ pub fn run() {
             choose_import_file,
             export_json,
             export_png,
-            scan_wechat_calls
+            scan_wechat_calls,
+            mac_setup_check,
+            mac_setup_initialize,
+            mac_setup_scan,
+            mac_setup_cancel
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to run Call Footprint");
+        .build(tauri::generate_context!())
+        .expect("failed to build Call Footprint")
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::ExitRequested { api, .. } = _event {
+                if wechat::setup::busy() {
+                    api.prevent_exit();
+                    wechat::setup::cancel();
+                }
+            }
+        });
 }
 
 #[cfg(test)]
