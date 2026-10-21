@@ -44,7 +44,7 @@ export function WallPage() {
   useLayoutEffect(() => {
     setHoveredDay(null);
     setSelectedDate(null);
-  }, [activeContactId]);
+  }, [activeContactId, dataset]);
   const range = useMemo(() => rangeFor(mode, year, month, start, end, dataset.timezone), [mode, year, month, start, end, dataset.timezone]);
   const wall = useMemo(() => buildWall(dataset, activeContactId, range), [dataset, activeContactId, range]);
   const rangeEvents = useMemo(() => filterEvents(dataset, activeContactId, range.startDate, range.endDate), [dataset, activeContactId, range]);

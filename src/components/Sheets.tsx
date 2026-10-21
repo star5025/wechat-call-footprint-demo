@@ -5,7 +5,7 @@ import type { Appearance } from "@/theme";
 import { buildContactCallSummary } from "@/data/contactSummary";
 import { contactSummaryFileName, createContactSummaryPng } from "@/export/contactSummaryImage";
 import { useApp } from "@/state/AppContext";
-import { exportJson, exportPng } from "@/native/bridge";
+import { exportAccountCollection, exportPng } from "@/native/bridge";
 import { isPagesDemo } from "@/runtime";
 import {
   directionLabel,
@@ -27,6 +27,11 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
     settingsOpen,
     setSettingsOpen,
     dataset,
+    collection,
+    accountsOpen,
+    setAccountsOpen,
+    macSetupOpen,
+    dataLoading,
     dataMode,
     activeContactId,
     chooseImport,
@@ -42,6 +47,8 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
   const [exportingSummary, setExportingSummary] = useState(false);
   const sheetOpen = Boolean(selectedEvent || settingsOpen);
   const anyOpen = sheetOpen || exportConfirmOpen;
+  const dataBusy = wechatScanning || macSetupOpen || Boolean(dataLoading);
+  const selectedAccount = collection.datasets.find(({ account }) => account.id === selectedEvent?.accountId)?.account;
   const summaryContact = dataset.contacts.find((contact) => contact.id === activeContactId)
     ?? dataset.contacts[0]
     ?? null;
@@ -88,6 +95,7 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (accountsOpen) return;
         if (deleteConfirmOpen) {
           if (!deleting) setDeleteConfirmOpen(false);
           return;
@@ -103,7 +111,7 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeEvent, deleteConfirmOpen, deleting, exportConfirmOpen, setSettingsOpen]);
+  }, [accountsOpen, closeEvent, deleteConfirmOpen, deleting, exportConfirmOpen, setSettingsOpen]);
 
   const confirmDelete = async () => {
     if (deleting) return;
@@ -118,7 +126,7 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
 
   const exportData = async () => {
     try {
-      const result = await exportJson("call-footprint-private.json", dataset);
+      const result = await exportAccountCollection("call-footprint-private.json", collection);
       if (result) notify("记录文件已保存");
     } catch {
       notify("保存失败，请重选位置");
@@ -156,7 +164,7 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
   return (
     <>
       {sheetOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
-      {!hideSummaryExport && dataMode === "imported" && summaryContactId && !anyOpen && (
+      {!hideSummaryExport && dataMode === "imported" && summaryContactId && !anyOpen && !accountsOpen && (
         <button
           className={`summary-image-fab ${exportingSummary ? "exporting" : ""}`}
           disabled={wechatScanning || exportingSummary}
@@ -187,6 +195,7 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
               <strong>{formatDuration(selectedEvent.connectedDurationSeconds)}</strong>
             </div>
             <div className="detail-rows">
+              {collection.datasets.length > 1 && selectedAccount && <div className="detail-row"><span>来源账号</span><strong>{selectedAccount.displayName || "微信用户"}</strong></div>}
               <div className="detail-row"><span>发起方向</span><strong>{directionLabel(selectedEvent.direction)}</strong></div>
               <div className="detail-row"><span>通话类型</span><strong>{mediaLabel(selectedEvent.mediaType)}</strong></div>
               <div className="detail-row"><span>结束状态</span><strong>{outcomeLabel(selectedEvent.outcome)}</strong></div>
@@ -202,6 +211,9 @@ export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = fal
             <span>主题</span>
             <ThemeSelect label="主题风格" value={appearance} options={[{ value: "default", label: "默认" }, { value: "github", label: "GitHub" }]} onChange={(value) => onAppearanceChange(value as Appearance)} />
           </div>
+          <button className="setting-item" disabled={dataBusy} onClick={() => { setSettingsOpen(false); setAccountsOpen(true); }}>
+            <span className="setting-icon lavender">👤</span><span><strong>账号管理</strong></span><i>›</i>
+          </button>
           {!isPagesDemo && <>
           <button className={`setting-item scan-setting ${wechatScanning ? "scanning" : ""}`} disabled={wechatScanning || appInfo?.isTauri === false} onClick={() => void scanWechat()}>
             <span className="setting-icon mint">{wechatScanning ? "⏳" : "🔍"}</span><span><strong>{wechatScanning ? "读取中…" : "读取微信"}</strong><small>{wechatScanning ? "请保持微信打开" : "不改动微信内容"}</small></span><i>›</i>

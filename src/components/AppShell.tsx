@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Sheets } from "@/components/Sheets";
+import { AccountManager } from "@/components/AccountManager";
 import { ImportDialog } from "@/components/ImportDialog";
 import { DataLoadDialog } from "@/components/DataLoadDialog";
 import { ScanConsentDialog } from "@/components/ScanConsentDialog";
@@ -13,7 +14,7 @@ import { DownloadPage } from "@/pages/DownloadPage";
 import { downloadHash } from "@/downloads";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId, macSetupOpen, closeMacSetup, completeMacSetup } = useApp();
+  const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId, accountScope, macSetupOpen, closeMacSetup, completeMacSetup } = useApp();
   const [theme, setTheme] = useState<ColorTheme>(readStoredTheme);
   const [appearance, setAppearance] = useState<Appearance>(readStoredAppearance);
   const [downloadOpen, setDownloadOpen] = useState(() => isPagesDemo && window.location.hash === downloadHash);
@@ -46,11 +47,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     saveAppearance(appearance);
   }, [appearance]);
   const mainRef = useRef<HTMLElement>(null);
-  const previousContact = useRef(activeContactId);
+  const contactViewKey = JSON.stringify([accountScope, activeContactId]);
+  const previousContact = useRef(contactViewKey);
 
   useLayoutEffect(() => {
-    const changed = previousContact.current !== activeContactId;
-    previousContact.current = activeContactId;
+    const changed = previousContact.current !== contactViewKey;
+    previousContact.current = contactViewKey;
     if (!changed || settings.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const animations: Animation[] = [];
     mainRef.current?.querySelectorAll<HTMLElement>("[data-contact-content]").forEach((element) => {
@@ -62,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       }));
     });
     return () => animations.forEach((animation) => animation.cancel());
-  }, [activeContactId, settings.reducedMotion]);
+  }, [contactViewKey, settings.reducedMotion]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -109,6 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <Sheets appearance={appearance} onAppearanceChange={setAppearance} hideSummaryExport={downloadOpen} />
+      <AccountManager />
       {!isPagesDemo && <ImportDialog />}
       <DataLoadDialog />
       {!isPagesDemo && <ScanConsentDialog />}

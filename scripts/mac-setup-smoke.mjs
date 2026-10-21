@@ -234,7 +234,38 @@ try {
     await called(page, "save_dataset");
     await page.locator("#mac-setup-title").waitFor({ state: "hidden" });
     assert.equal(await page.evaluate(() => window.__macSmoke.saved.length), 1);
-    assert.deepEqual(await page.evaluate(() => JSON.parse(window.__macSmoke.saved[0])), dataset);
+    const savedCollection = await page.evaluate(() => JSON.parse(window.__macSmoke.saved[0]));
+    assert.equal(savedCollection.format, "call-footprint-collection");
+    assert.equal(savedCollection.datasets.length, 1);
+    assert.equal(savedCollection.datasets[0].account.id, dataset.account.id);
+    assert.deepEqual(savedCollection.datasets[0].events, dataset.events);
+    assert.equal(await page.evaluate(() => window.__macSmoke.listenerCount()), 0);
+    assert.deepEqual(await page.evaluate(() => window.__macSmoke.unexpected), []);
+    await context.close();
+  }
+  // Adding a different own account must retain the original and select the actual scan result.
+  {
+    const second = structuredClone(dataset);
+    second.account = { ...second.account, id: "ci-second-account", displayName: "CI小号" };
+    second.contacts = second.contacts.map((contact) => ({ ...contact, accountId: second.account.id }));
+    second.events = second.events.map((event) => ({ ...event, accountId: second.account.id }));
+    const { page, dialog, context } = await open("blocked");
+    await dialog.getByRole("combobox").selectOption("ci-ready");
+    await button(dialog, "读取").click();
+    await button(dialog, "同意读取").click();
+    await called(page, "mac_setup_scan");
+    await page.evaluate((fixture) => window.__macSmoke.settle("mac_setup_scan", null, {
+      dataset: fixture,
+      summary: { wechatVersion: "4.1.13", accountLabel: "账号 2", databaseShards: 1,
+        contactsWithCalls: 1, callEvents: 1, warnings: [] }
+    }), second);
+    await called(page, "save_dataset");
+    await page.locator("#mac-setup-title").waitFor({ state: "hidden" });
+    const saved = await page.evaluate(() => JSON.parse(window.__macSmoke.saved[0]));
+    assert.equal(saved.datasets.length, 2);
+    assert.deepEqual(saved.datasets[0], dataset);
+    assert.equal(saved.datasets[1].account.id, second.account.id);
+    assert.match(await page.locator(".account-scope-select").innerText(), /CI小号/);
     assert.equal(await page.evaluate(() => window.__macSmoke.listenerCount()), 0);
     assert.deepEqual(await page.evaluate(() => window.__macSmoke.unexpected), []);
     await context.close();

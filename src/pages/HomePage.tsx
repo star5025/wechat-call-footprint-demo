@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ContactSwitcher } from "@/components/ContactSwitcher";
+import { AccountScopeSelect } from "@/components/AccountScopeSelect";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildWall, filterEvents, isConnected, localDate, summarize } from "@/data/analytics";
@@ -49,7 +50,8 @@ export function HomePage() {
   const favoritePeriod = useMemo(() => favoriteCallPeriod(events), [events]);
   const latest = events[0] ?? null;
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
-  const contactName = contact?.displayName ?? "联系人";
+  const contactName = dataset.contacts.find((item) => item.id === latest?.contactId)?.displayName
+    ?? latest?.contactSnapshot.displayName ?? "联系人";
   const accountName = dataset.source.kind === "empty"
     ? "微信用户"
     : dataset.account.displayName.trim() || "微信用户";
@@ -60,7 +62,7 @@ export function HomePage() {
   return (
     <section className="view active">
       <header className="welcome">
-        <div><h1>{timeGreeting(currentHour)}，{accountName}</h1><p>通话概览</p></div>
+        <div><h1>{timeGreeting(currentHour)}，{accountName}</h1><div className="account-overview-scope"><p>通话概览</p><AccountScopeSelect /></div></div>
         <ContactSwitcher />
       </header>
 

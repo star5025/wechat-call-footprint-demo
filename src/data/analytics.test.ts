@@ -81,6 +81,83 @@ describe("call analytics gold standard", () => {
     expect(result.quality.overallState).toBe("partial");
   });
 
+  it.each(["missing", "partial", "failed"] as const)(
+    "does not report all-%s coverage as good",
+    (state) => {
+      const dataset = {
+        ...TEST_DATASET,
+        coverage: [{
+          ...TEST_DATASET.coverage[0],
+          startDate: "2026-09-22",
+          endDate: "2026-09-23",
+          state
+        }]
+      };
+      const result = buildWall(dataset, contactId, {
+        startDate: "2026-09-22",
+        endDate: "2026-09-23",
+        timezone: dataset.timezone
+      });
+      expect(result.days.map((day) => day.coverage)).toEqual([state, state]);
+      expect(result.quality.overallState).toBe("partial");
+      expect(result.quality.dimensions[0]).toMatchObject({ state: "warning", score: 0 });
+      expect(result.quality.dimensions[0].summary).not.toContain("记录完整");
+      expect(result.quality.issueCount).toBe(1);
+    }
+  );
+
+  it.each([
+    [["complete", "missing"], "missing"],
+    [["complete", "missing", "partial"], "partial"],
+    [["complete", "missing", "partial", "failed"], "failed"]
+  ] as const)("uses conservative coverage priority for %j", (states, expected) => {
+    const dataset = {
+      ...TEST_DATASET,
+      coverage: states.map((state) => ({
+        ...TEST_DATASET.coverage[0],
+        startDate: "2026-09-22",
+        endDate: "2026-09-22",
+        state
+      }))
+    };
+    const result = buildWall(dataset, contactId, {
+      startDate: "2026-09-22",
+      endDate: "2026-09-22",
+      timezone: dataset.timezone
+    });
+    expect(result.days[0].coverage).toBe(expected);
+    expect(result.quality.overallState).toBe("partial");
+  });
+
+  it("keeps future uncovered days empty and missing, not complete zero-event days", () => {
+    const result = buildWall(TEST_DATASET, contactId, {
+      startDate: "2099-01-01",
+      endDate: "2099-01-02",
+      timezone: TEST_DATASET.timezone
+    });
+    expect(result.days).toHaveLength(2);
+    expect(result.days.every((day) => day.callCount === 0 && day.coverage === "missing")).toBe(true);
+    expect(result.quality.overallState).toBe("partial");
+  });
+
+  it("preserves quality for complete zero-event days and empty ranges", () => {
+    const result = buildWall(TEST_DATASET, contactId, {
+      startDate: "2026-09-25",
+      endDate: "2026-09-25",
+      timezone: TEST_DATASET.timezone
+    });
+    expect(result.days[0]).toMatchObject({ callCount: 0, coverage: "complete" });
+    expect(result.quality.overallState).toBe("good");
+    const empty = buildWall(TEST_DATASET, contactId, {
+      startDate: "2026-10-07",
+      endDate: "2026-09-22",
+      timezone: TEST_DATASET.timezone
+    });
+    expect(empty.days).toEqual([]);
+    expect(empty.quality.overallState).toBe("good");
+    expect(empty.quality.dimensions[0].score).toBeNull();
+  });
+
   it("sorts imported events newest first with a stable id tie breaker", () => {
     const reversed = { ...TEST_DATASET, events: [...TEST_DATASET.events].reverse() };
     const result = filterEvents(reversed, contactId);

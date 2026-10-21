@@ -13,7 +13,7 @@ export function ImportDialog() {
           <>
             <span className="dialog-orb">📥</span>
             <h2 id="import-title">确认打开这份记录</h2>
-            <p className="dialog-subtitle">确认后，通话记录会保存在这台电脑上。</p>
+            <p className="dialog-subtitle">新账号会加入，已有账号会更新并去重。</p>
             <div className="import-file-name">{importPreview.fileName}</div>
             <div className="import-stats">
               <div><small>联系人</small><strong>{importPreview.contactCount}</strong></div>

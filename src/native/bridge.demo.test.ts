@@ -83,6 +83,36 @@ describe("Pages demo isolation", () => {
     expect(invoke).not.toHaveBeenCalled();
   });
 
+  it("keeps multi-account demo records session-only and blocks collection export", async () => {
+    vi.stubEnv("MODE", "pages-demo");
+    storage.set("call-footprint.dataset.v1", '{"private":"do-not-load"}');
+    const bridge = await import("./bridge");
+    const collection = (await bridge.loadAccountCollection())!;
+    expect(collection.datasets).toHaveLength(2);
+    expect(JSON.stringify(collection)).not.toContain("do-not-load");
+    const original = new Map(storage);
+    await bridge.saveAccountCollection(collection);
+    expect(await bridge.exportAccountCollection("accounts.json", collection)).toBeNull();
+    expect(storage).toEqual(original);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("migrates native legacy data in memory and saves a full collection atomically", async () => {
+    vi.stubEnv("MODE", "production");
+    const { createDemoDataset } = await import("@/demo/dataset");
+    const original = createDemoDataset();
+    invoke.mockResolvedValueOnce(JSON.stringify(original));
+    const bridge = await import("./bridge");
+    const collection = (await bridge.loadAccountCollection())!;
+    expect(collection.datasets).toEqual([original]);
+    expect(invoke).toHaveBeenCalledTimes(1);
+    await bridge.saveAccountCollection(collection);
+    expect(invoke).toHaveBeenLastCalledWith("save_dataset", { content: JSON.stringify(collection) });
+    invoke.mockRejectedValueOnce(new Error("disk full"));
+    await expect(bridge.saveAccountCollection(collection)).rejects.toThrow("disk full");
+    expect(collection.datasets).toEqual([original]);
+  });
+
   it("does not seed synthetic data in the desktop build", async () => {
     vi.stubEnv("MODE", "production");
     invoke.mockResolvedValueOnce(null);

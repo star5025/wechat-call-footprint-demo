@@ -423,3 +423,54 @@ small{font-weight:650}
   .app.pages-demo .download-card { padding: 23px 20px; }
   .app.pages-demo .download-intro { margin-bottom: 24px; }
 }
+
+/* Account controls are scoped independently of the existing sheets and dialogs. */
+.account-overview-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 10px; }
+.welcome .account-overview-scope p { margin: 0; }
+.account-scope-select { width: 210px; max-width: 100%; position: relative; z-index: 45; }
+.account-scope-select .theme-select-trigger { height: 36px; font-size: 13px; }
+.account-scope-select .theme-select-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-scope-select .theme-select-menu { max-height: min(360px, 55vh); overflow-y: auto; }
+.account-manager-backdrop { position: fixed; inset: 0; z-index: 186; display: grid; place-items: center; padding: 20px; background: var(--gh-overlay, rgba(38, 30, 52, .4)); backdrop-filter: blur(8px); }
+.account-manager { width: min(620px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--gh-surface, var(--white)); color: var(--ink); box-shadow: var(--shadow); }
+.account-manager-header { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
+.account-manager-header h2 { margin: 0; font-size: 24px; }
+.account-manager-header p, .account-manager-hint { margin: 8px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.account-manager-close { width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--gh-subtle, var(--paper)); font-size: 22px; }
+.account-manager-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.account-manager-copy { min-width: 0; flex: 1; }
+.account-manager-copy strong { display: block; overflow-wrap: anywhere; font-size: 15px; }
+.account-manager-copy small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.account-manager-remove, .account-manager-link-list button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--gh-subtle, var(--paper)); font-size: 12px; flex-shrink: 0; }
+.account-manager-remove { color: var(--gh-danger, var(--coral)); }
+.account-manager-confirm { margin-top: 16px; padding: 16px; border: 1px solid var(--gh-danger, var(--coral)); border-radius: var(--radius-md); background: var(--gh-danger-soft, var(--peach-soft)); }
+.account-manager-confirm strong { overflow-wrap: anywhere; }
+.account-manager-confirm p { font-size: 13px; line-height: 1.7; }
+.account-manager-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.account-manager-add { margin-top: 20px; }
+.account-manager-links { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+.account-manager-disclosure { display: flex; justify-content: space-between; width: 100%; padding: 10px 0; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 700; }
+.account-manager-link-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.account-manager-link-form > button { justify-self: start; }
+.account-manager .theme-select-trigger { font-size: 13px; }
+.account-manager .theme-select-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-manager .theme-select-menu { max-height: 240px; overflow-y: auto; min-width: 0; }
+.account-manager .theme-select-menu button { overflow-wrap: anywhere; }
+.account-manager-link-list { list-style: none; margin: 16px 0 0; padding: 0; }
+.account-manager-link-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 12px; }
+.account-manager-link-list li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.7; }
+.account-manager button:disabled { opacity: .5; cursor: not-allowed; }
+:root[data-appearance="github"] body .account-manager { background: var(--gh-surface); box-shadow: none; border-radius: 12px; }
+:root[data-appearance="github"] body .account-manager .mini-avatar { background: var(--gh-subtle); color: var(--ink); }
+:root[data-appearance="github"] body .account-manager :is(.account-manager-close, .account-manager-remove, .account-manager-link-list button) { background: var(--gh-subtle); border-radius: 6px; }
+:root[data-appearance="github"] body .account-manager .danger-action { background: var(--gh-danger-soft); color: var(--gh-danger); border: 1px solid var(--gh-danger); box-shadow: none; }
+:root[data-appearance="github"] body .account-manager :is(.primary-action, .secondary-action) { border-radius: 6px; }
+.account-manager-reduced-motion *, .app.reduced-motion .account-scope-select * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .account-manager *, .account-scope-select * { animation: none !important; transition: none !important; }
+}
+@media (max-width: 600px) {
+  .account-manager-backdrop { padding: 12px; }
+  .account-manager { max-height: calc(100dvh - 24px); padding: 20px; }
+  .account-scope-select { width: 180px; }
+}

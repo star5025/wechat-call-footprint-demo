@@ -246,7 +246,7 @@ where
         let result = WechatScanResult {
             summary: WechatScanSummary {
                 wechat_version: installation.version,
-                account_label: "当前登录账号".into(),
+                account_label: "已验证的微信账号".into(),
                 database_shards: snapshot.message_databases.len(),
                 contacts_with_calls: parsed.dataset.contacts.len(),
                 call_events: parsed.dataset.events.len(),
@@ -291,7 +291,7 @@ where
             Path::new(&manifest_path),
             app_cache_dir,
             &installation.version,
-            "当前登录账号",
+            "已验证的微信账号",
             report,
             setup::cancel_requested,
         )

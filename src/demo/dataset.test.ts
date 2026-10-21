@@ -6,7 +6,29 @@ import { buildContactCallSummary } from "@/data/contactSummary";
 import { validateDataset } from "@/data/dataset";
 import { rankContactsByDuration } from "@/data/rankings";
 import { contactSummaryFileName } from "@/export/contactSummaryImage";
-import { createDemoDataset } from "@/demo/dataset";
+import { createDemoAccountCollection, createDemoDataset } from "@/demo/dataset";
+import { projectAccountCollection, upsertAccountDataset } from "@/data/accountCollection";
+
+describe("multi-account preview", () => {
+  it("preserves primary data and automatically joins differing remarks using synthetic identities", () => {
+    const collection = createDemoAccountCollection();
+    expect(collection).toEqual(createDemoAccountCollection());
+    expect(collection.datasets).toHaveLength(2);
+    expect(collection.datasets[0]).toEqual(createDemoDataset());
+    expect(collection.datasets[1].events).toHaveLength(40);
+    expect(collection.datasets[1].contacts[0].displayName).toBe("杰哥");
+    const all = projectAccountCollection(collection, null);
+    const primary = projectAccountCollection(collection, collection.datasets[0].account.id);
+    expect(all.contacts).toHaveLength(6);
+    expect(primary.contacts).toHaveLength(5);
+    expect(all.events).toHaveLength(primary.events.length + 40);
+    const person = all.contacts.find((contact) => contact.wechatId === "synthetic-wechat-person-1")!;
+    expect(person.aliases).toEqual(expect.arrayContaining(["阿杰", "杰哥"]));
+    expect(new Set(all.events.filter((event) => event.contactId === person.id).map((event) => event.accountId)).size).toBe(2);
+    expect(upsertAccountDataset(collection, collection.datasets[1]).datasets[1].events).toHaveLength(40);
+    expect(JSON.stringify(collection)).not.toMatch(/https?:\/\/|file:\/\/|wxid_/i);
+  });
+});
 
 const FIXED_END = "2026-10-19T23:59:59+08:00";
 const OFFSET_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+08:00$/;
@@ -227,7 +249,7 @@ describe("synthetic Pages demonstration dataset", () => {
       expect(svg.replace('xmlns="http://www.w3.org/2000/svg"', "")).not.toMatch(/https?:|file:|blob:/i);
     }
     for (const contact of dataset.contacts) {
-      expect(contact.wechatId).toBeNull();
+      expect(contact.wechatId).toMatch(/^synthetic-wechat-person-/);
       expect(contact.aliases).toEqual([]);
       expect(contact.mergedFromContactIds).toEqual([]);
     }

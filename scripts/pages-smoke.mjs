@@ -72,8 +72,7 @@ async function selectContact(page, index) {
   await page.locator(".contact-menu-react").getByRole("button", { name: new RegExp(contacts[index]) }).click();
   await page.locator(".contact-switch strong").filter({ hasText: contacts[index] }).waitFor();
   assert.equal(await page.locator(".contact-switch strong").textContent(), contacts[index]);
-  await page.waitForFunction(({ key, id }) => JSON.parse(localStorage.getItem(key) ?? "null")?.lastContactId === id,
-    { key: settingsKey, id: `synthetic-demo-contact-${index + 1}` });
+  await page.waitForFunction((key) => Boolean(JSON.parse(localStorage.getItem(key) ?? "null")?.lastContactId), settingsKey);
 }
 
 async function assertNoRealDataControls(page) {
@@ -263,7 +262,7 @@ try {
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
   await page.locator('.settings-sheet[aria-hidden="false"]').waitFor();
   await page.locator(".settings-sheet").getByRole("button", { name: /重置/ }).waitFor();
-  assert.equal(await page.locator(".settings-sheet .setting-item").count(), 1, "Only demo reset belongs in demo settings");
+  assert.equal(await page.locator(".settings-sheet .setting-item").count(), 2, "Account management and reset belong in demo settings");
   assert.equal(await page.locator(".settings-sheet .local-note").count(), 0);
   assert.doesNotMatch(await page.locator(".settings-sheet").innerText(), /演示|虚构|合成/);
   await assertNoRealDataControls(page);
@@ -566,6 +565,37 @@ try {
   }, settingsKey);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), legacyDatasetKey), bogusDataset);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), themeKey), "light", "Reset must not overwrite the independent theme preference");
+
+  // Account scope is global; the same stable identity links differing account remarks automatically.
+  const primaryTotal = Number(await page.locator(".big-number").getAttribute("data-number-current"));
+  await page.locator(".account-scope-select .theme-select-trigger").click();
+  await page.locator(".account-scope-select").getByRole("option", { name: "全部账号", exact: true }).click();
+  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key))?.lastAccountId === null, settingsKey);
+  await page.waitForTimeout(800);
+  assert.ok(Number(await page.locator(".big-number").getAttribute("data-number-current")) >= primaryTotal);
+  await page.locator(".contact-switch").click();
+  const aggregateNames = await page.locator(".contact-menu-react strong").allTextContents();
+  assert.equal(aggregateNames.filter((name) => name === "阿杰" || name === "杰哥").length, 1, "Stable identity must link differing remarks without prompting");
+  await page.locator(".contact-switch").click();
+  await page.getByRole("button", { name: "打开设置", exact: true }).click();
+  await page.locator(".settings-sheet").getByRole("button", { name: "账号管理", exact: true }).click();
+  const manager = page.getByRole("dialog", { name: "账号管理", exact: true });
+  await manager.waitFor();
+  assert.equal(await manager.locator(".account-manager-row").count(), 2);
+  assert.equal(await manager.getByRole("button", { name: "添加账号", exact: true }).count(), 0, "Pages must not expose real acquisition");
+  await manager.getByRole("button", { name: "联系人关联" }).click();
+  await manager.getByText("暂无手动关联", { exact: true }).waitFor();
+  await manager.locator(".account-manager-remove").last().click();
+  await manager.getByRole("button", { name: "取消", exact: true }).click();
+  assert.equal(await manager.locator(".account-manager-row").count(), 2, "Cancelled removal must preserve both accounts");
+  await manager.locator(".account-manager-remove").last().click();
+  await manager.getByRole("button", { name: "确认移除", exact: true }).click();
+  await page.waitForFunction(() => document.querySelectorAll(".account-manager-row").length === 1);
+  await manager.getByRole("button", { name: "关闭账号管理", exact: true }).click();
+  await page.getByRole("button", { name: "打开设置", exact: true }).click();
+  await page.locator(".settings-sheet").getByRole("button", { name: "重置", exact: true }).click();
+  await waitForHome(page);
+  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key))?.lastAccountId !== null, settingsKey);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await waitForHome(page);

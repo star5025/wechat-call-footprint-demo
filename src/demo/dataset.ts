@@ -1,5 +1,6 @@
 import type { CallEvent, Contact } from "@contracts/models";
 import type { AppDataset } from "@/domain";
+import { createAccountCollection, upsertAccountDataset, type AccountCollection } from "@/data/accountCollection";
 
 const TIMEZONE = "Asia/Shanghai";
 const OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -13,8 +14,8 @@ function localTimestamp(milliseconds: number): string {
 }
 
 function avatar(index: number): string {
-  const backgrounds = ["#eee7ff", "#dff5ed", "#ffe8d8", "#e1edff", "#ffe3ef", "#e8e4ff"];
-  const emojis = ["🐶", "🐼", "🐱", "🦊", "🐰", "😎"];
+  const backgrounds = ["#eee7ff", "#dff5ed", "#ffe8d8", "#e1edff", "#ffe3ef", "#e8e4ff", "#e7f4ed", "#fff0d9"];
+  const emojis = ["🐶", "🐼", "🐱", "🦊", "🐰", "😎", "🐨", "🙂"];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="32" fill="${backgrounds[index]}"/><text x="64" y="88" text-anchor="middle" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif" font-size="80">${emojis[index]}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -32,7 +33,7 @@ export function createDemoDataset(): AppDataset {
     accountId: ACCOUNT_ID,
     kind: "person",
     displayName,
-    wechatId: null,
+    wechatId: `synthetic-wechat-person-${index + 1}`,
     avatarRef: avatar(index),
     aliases: [],
     identityConfidence: "confirmed",
@@ -139,4 +140,37 @@ export function createDemoDataset(): AppDataset {
       reasonCode: null
     }]
   };
+}
+
+export function createDemoAccountCollection(): AccountCollection {
+  const primary = createDemoDataset();
+  const secondary = structuredClone(primary);
+  const accountId = "synthetic-demo-account-secondary";
+  const sourceId = "synthetic-demo-source-secondary";
+  secondary.account = { id: accountId, displayName: "小陈的小号", avatarRef: avatar(7) };
+  const remarks = ["杰哥", "周哥", "Lily", "小王", "张同学"];
+  secondary.contacts = secondary.contacts.map((contact, index) => ({
+    ...contact, accountId, displayName: remarks[index]
+  }));
+  const extra: Contact = {
+    ...secondary.contacts[0], id: "synthetic-demo-secondary-only", accountId,
+    displayName: "小林", wechatId: "synthetic-wechat-person-6", avatarRef: avatar(6)
+  };
+  secondary.contacts.push(extra);
+  secondary.events = primary.events.slice(-40).map((event, index) => {
+    const contact = index === 0 ? extra : secondary.contacts.find((item) => item.id === event.contactId)!;
+    return {
+      ...structuredClone(event), id: `synthetic-secondary-event-${index}`, accountId,
+      contactId: contact.id, contactSnapshot: { displayName: contact.displayName, kind: contact.kind },
+      conversationId: `synthetic-secondary-conversation-${contact.id}`,
+      startedAt: event.startedAt ? localTimestamp(Date.parse(event.startedAt) - 60_000) : null,
+      answeredAt: event.answeredAt ? localTimestamp(Date.parse(event.answeredAt) - 60_000) : null,
+      endedAt: event.endedAt ? localTimestamp(Date.parse(event.endedAt) - 60_000) : null,
+      lineage: { ...structuredClone(event.lineage), sourceRefs: event.lineage.sourceRefs.map((ref) => ({
+        ...ref, sourceId, sourceRecordIdHash: `synthetic-secondary-record-${index}`
+      })) }
+    };
+  });
+  secondary.coverage = [{ startDate: "2025-01-01", endDate: "2026-10-19", state: "complete", sourceIds: [sourceId], reasonCode: null }];
+  return upsertAccountDataset(createAccountCollection(primary), secondary);
 }

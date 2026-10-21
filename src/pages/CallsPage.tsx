@@ -13,7 +13,7 @@ import { useApp } from "@/state/AppContext";
 import { directionLabel, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel } from "@/utils/format";
 
 export function CallsPage() {
-  const { dataset, activeContactId, callsDateFilter, clearCallsDateFilter, openEvent, settings } = useApp();
+  const { dataset, activeContactId, accountScope, callsDateFilter, clearCallsDateFilter, openEvent, settings } = useApp();
   const [timeRange, setTimeRange] = useState<CallsTimeRange>("all");
   const [durationRange, setDurationRange] = useState<CallsDurationRange>("all");
   const [sortOrder, setSortOrder] = useState<CallsSortOrder>("newest");
@@ -24,7 +24,7 @@ export function CallsPage() {
   const [customEnd, setCustomEnd] = useState(allEvents[0]?.startedAt?.slice(0, 10) ?? "");
 
   const feedRef = useRef<HTMLDivElement>(null);
-  const filterKey = JSON.stringify([activeContactId, callsDateFilter, timeRange, durationRange, sortOrder, customStart, customEnd, search]);
+  const filterKey = JSON.stringify([accountScope, activeContactId, callsDateFilter, timeRange, durationRange, sortOrder, customStart, customEnd, search]);
   const previousFilterKey = useRef(filterKey);
 
   useLayoutEffect(() => {

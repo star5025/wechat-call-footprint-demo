@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { CallEvent } from "@contracts/models";
 import type {
+  AccountCollection,
   AppDataset,
   AppInfo,
   AppRoute,
@@ -19,8 +20,8 @@ import type {
   WechatScanResult
 } from "@/domain";
 import { DEFAULT_SETTINGS } from "@/domain";
-import { createEmptyDataset } from "@/data/emptyDataset";
-import { chooseImportFile, deleteDataset, getAppInfo, loadDataset, loadSettings, saveDataset, saveSettings, scanWechatCalls } from "@/native/bridge";
+import { createAccountCollection, validateAccountCollection, upsertAccountDataset, removeAccountDataset, projectAccountCollection, linkContacts as linkCollectionContacts, unlinkContacts as unlinkCollectionContacts } from "@/data/accountCollection";
+import { chooseImportFile, deleteDataset, getAppInfo, loadAccountCollection, loadSettings, saveAccountCollection, saveSettings, scanWechatCalls } from "@/native/bridge";
 import { makeImportPreview, parseDataset, validateDataset } from "@/data/dataset";
 import { scanErrorMessage } from "@/native/scanErrors";
 import { isPagesDemo } from "@/runtime";
@@ -47,6 +48,14 @@ export interface DataLoadSuccess {
 interface AppContextValue {
   ready: boolean;
   dataset: AppDataset;
+  collection: AccountCollection;
+  accountScope: string | null;
+  setAccountScope: (id: string | null) => void;
+  accountsOpen: boolean;
+  setAccountsOpen: (open: boolean) => void;
+  removeAccount: (id: string) => Promise<void>;
+  linkContacts: (members: AccountCollection["links"][number]["members"]) => Promise<void>;
+  unlinkContacts: (index: number) => Promise<void>;
   dataMode: DataMode;
   settings: AppSettings;
   appInfo: AppInfo | null;
@@ -89,8 +98,16 @@ let toastId = 0;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [dataset, setDataset] = useState<AppDataset>(() => createEmptyDataset());
-  const [dataMode, setDataMode] = useState<DataMode>("empty");
+  const [collection, setCollection] = useState<AccountCollection>(() => createAccountCollection());
+  const collectionRef = useRef(collection);
+  const mutationQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const acquisitionBusy = useRef(false);
+  const importBusy = useRef(false);
+  const [accountScope, setScope] = useState<string | null>(null);
+  const scopeRef = useRef<string | null>(null);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const dataset = useMemo(() => projectAccountCollection(collection, accountScope), [collection, accountScope]);
+  const dataMode: DataMode = collection.datasets.length ? "imported" : "empty";
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [route, setRoute] = useState<AppRoute>("home");
@@ -148,28 +165,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       try {
-        const [storedSettings, storedDataset, info] = await Promise.all([
+        const [storedSettings, storedCollection, info] = await Promise.all([
           loadSettings(),
-          loadDataset(),
+          loadAccountCollection(),
           getAppInfo()
         ]);
         const nextSettings = { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
         setSettings({ ...nextSettings, lastRoute: "home" });
         setRoute("home");
         setAppInfo(info);
-        if (storedDataset) {
-          setDataset(storedDataset);
-          setDataMode("imported");
-          setActiveContactId(storedDataset.contacts.some((contact) => contact.id === nextSettings.lastContactId)
-            ? nextSettings.lastContactId : storedDataset.contacts[0]?.id ?? null);
-        } else {
-          setDataset(createEmptyDataset());
-          setDataMode("empty");
-          setActiveContactId(null);
-        }
+        const nextCollection = storedCollection ?? createAccountCollection();
+        const requestedScope = storedSettings && Object.hasOwn(storedSettings, "lastAccountId")
+          ? storedSettings.lastAccountId ?? null : nextCollection.datasets[0]?.account.id ?? null;
+        const scope = nextCollection.datasets.some((item) => item.account.id === requestedScope) ? requestedScope : null;
+        collectionRef.current = nextCollection;
+        setCollection(nextCollection);
+        scopeRef.current = scope;
+        setScope(scope);
+        const projection = projectAccountCollection(nextCollection, scope);
+        setActiveContactId(projection.contacts.some((contact) => contact.id === nextSettings.lastContactId)
+          ? nextSettings.lastContactId : projection.contacts[0]?.id ?? null);
       } catch {
-        setDataset(createEmptyDataset());
-        setDataMode("empty");
+        collectionRef.current = createAccountCollection();
+        setCollection(collectionRef.current);
         setActiveContactId(null);
         notify("无法打开上次保存的内容，请重新读取或从文件打开");
       } finally {
@@ -186,6 +204,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notify("设置未能保存，请稍后重试");
     }
   }, [notify]);
+
+  const enqueueMutation = useCallback(<T,>(operation: () => Promise<T>): Promise<T> => {
+    const task = mutationQueue.current.then(operation);
+    mutationQueue.current = task.catch(() => undefined);
+    return task;
+  }, []);
+
+  const publishCollection = useCallback((next: AccountCollection, requestedScope = scopeRef.current) => {
+    const scope = next.datasets.some((item) => item.account.id === requestedScope) ? requestedScope : null;
+    const projection = projectAccountCollection(next, scope);
+    collectionRef.current = next;
+    setCollection(next);
+    scopeRef.current = scope;
+    setScope(scope);
+    setSelectedEvent(null);
+    setCallsDateFilter(null);
+    setActiveContactId((current) => projection.contacts.some((item) => item.id === current)
+      ? current : projection.contacts[0]?.id ?? null);
+    return projection;
+  }, []);
+
+  const setAccountScope = useCallback((id: string | null) => {
+    publishCollection(collectionRef.current, id);
+  }, [publishCollection]);
+
+  useEffect(() => {
+    if (ready && settings.lastAccountId !== accountScope) {
+      void persistSettings({ ...settings, lastAccountId: accountScope });
+    }
+  }, [accountScope, persistSettings, ready, settings]);
+
+  const mutateCollection = useCallback((transform: (current: AccountCollection) => AccountCollection) =>
+    enqueueMutation(async () => {
+      const next = transform(collectionRef.current);
+      await saveAccountCollection(next);
+      publishCollection(next);
+      setDataLoadSuccess(null);
+    }), [enqueueMutation, publishCollection]);
+
+  const removeAccount = useCallback((id: string) => mutateCollection((current) => removeAccountDataset(current, id)), [mutateCollection]);
+  const linkContacts = useCallback((members: AccountCollection["links"][number]["members"]) =>
+    mutateCollection((current) => linkCollectionContacts(current, members)), [mutateCollection]);
+  const unlinkContacts = useCallback((index: number) => {
+    const target = collectionRef.current.links[index];
+    if (!target) return Promise.resolve();
+    const key = JSON.stringify(target);
+    return mutateCollection((current) => {
+      const currentIndex = current.links.findIndex((link) => JSON.stringify(link) === key);
+      return currentIndex < 0 ? current : unlinkCollectionContacts(current, currentIndex);
+    });
+  }, [mutateCollection]);
 
   const navigate = useCallback((nextRoute: AppRoute) => {
     if (
@@ -220,28 +289,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     nextDataset: AppDataset,
     title: string,
     description: string,
-    warnings: string[] = []
-  ) => {
-    await saveDataset(nextDataset);
-    setDataLoading((current) => current ? {
-      title: "准备完成",
-      detail: "请选择要查看的联系人",
-      progress: 100
-    } : current);
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
-    setDataset(nextDataset);
-    setDataMode("imported");
-    setActiveContactId(null);
+    warnings: string[] = [],
+    incomingCollection?: AccountCollection
+  ) => enqueueMutation(async () => {
+    let next = collectionRef.current;
+    for (const incoming of incomingCollection?.datasets ?? [nextDataset]) next = upsertAccountDataset(next, incoming);
+    const linkKey = (members: AccountCollection["links"][number]["members"]) =>
+      JSON.stringify(members.map((member) => JSON.stringify([member.accountId, member.contactId])).sort());
+    for (const link of incomingCollection?.links ?? []) {
+      if (!next.links.some((existing) => linkKey(existing.members) === linkKey(link.members))) {
+        next = linkCollectionContacts(next, link.members);
+      }
+    }
+    await saveAccountCollection(next);
+    const projection = publishCollection(next, incomingCollection ? null : nextDataset.account.id);
     setRoute("home");
-    await persistSettings({ ...settings, lastContactId: null, lastRoute: "home" });
-    setDataLoadSuccess({
-      title,
-      description,
-      eventCount: nextDataset.events.length,
-      contactCount: nextDataset.contacts.length,
-      warnings
-    });
-  }, [persistSettings, settings]);
+    await persistSettings({ ...settings, lastAccountId: scopeRef.current, lastRoute: "home" });
+    setDataLoadSuccess({ title, description, eventCount: projection.events.length, contactCount: projection.contacts.length, warnings });
+  }), [enqueueMutation, persistSettings, publishCollection, settings]);
 
   const selectLoadedContact = useCallback(async (contactId: string) => {
     const contact = dataset.contacts.find((item) => item.id === contactId);
@@ -258,7 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scanWechat = useCallback(async () => {
-    if (isPagesDemo || wechatScanning || macSetupOpen) return;
+    if (isPagesDemo || acquisitionBusy.current || wechatScanning || macSetupOpen) return;
     setSettingsOpen(false);
     if (appInfo?.platform === "macos" && appInfo.isTauri) {
       setMacSetupOpen(true);
@@ -275,6 +340,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const validation = validateDataset(result.dataset);
     if (!validation.valid || !validation.dataset) throw new Error("MACOS_SETUP_RESULT_INVALID");
+    if (acquisitionBusy.current) return;
+    acquisitionBusy.current = true;
     try {
       await finishDataLoad(
         validation.dataset,
@@ -285,13 +352,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notify(`已读取 ${validation.dataset.events.length} 条通话记录`);
     } catch {
       throw new Error("MACOS_SETUP_SAVE_FAILED");
+    } finally {
+      acquisitionBusy.current = false;
     }
   }, [appInfo, finishDataLoad, notify]);
 
   const cancelWechatScan = useCallback(() => setScanConsentOpen(false), []);
 
   const confirmWechatScan = useCallback(async () => {
-    if (isPagesDemo || wechatScanning) return;
+    if (isPagesDemo || acquisitionBusy.current || wechatScanning) return;
+    acquisitionBusy.current = true;
     setScanConsentOpen(false);
     setDataLoadSuccess(null);
     setWechatScanning(true);
@@ -324,10 +394,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setDataLoading(null);
       setWechatScanning(false);
+      acquisitionBusy.current = false;
     }
   }, [finishDataLoad, notify, wechatScanning]);
 
   const chooseImport = useCallback(async () => {
+    if (isPagesDemo || acquisitionBusy.current) return;
+    acquisitionBusy.current = true;
     setImportErrors([]);
     try {
       const file = await chooseImportFile();
@@ -344,7 +417,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setImportErrors(["这个文件太大，请选择较小的通话记录文件。"]);
         return;
       }
-      const result = parseDataset(file.content);
+      const parsed: unknown = JSON.parse(file.content);
+      let incomingCollection: AccountCollection | undefined;
+      if (parsed && typeof parsed === "object" && "format" in parsed && parsed.format === "call-footprint-collection") {
+        incomingCollection = validateAccountCollection(parsed);
+      }
+      const result = incomingCollection
+        ? { valid: true, dataset: projectAccountCollection(incomingCollection, null), errors: [], warnings: [] }
+        : parseDataset(file.content);
       setDataLoading({
         title: "正在整理通话记录",
         detail: "请稍候",
@@ -355,16 +435,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setImportErrors(result.errors);
         return;
       }
-      setImportPreview(makeImportPreview(file.fileName, result.dataset, result.warnings));
+      setImportPreview({ ...makeImportPreview(file.fileName, result.dataset, result.warnings), collection: incomingCollection });
     } catch {
       setImportErrors(["无法打开这个文件，请重新选择。"]);
     } finally {
+      acquisitionBusy.current = false;
       setDataLoading(null);
     }
   }, []);
 
   const confirmImport = useCallback(async () => {
-    if (!importPreview) return;
+    if (isPagesDemo || !importPreview || importBusy.current) return;
+    importBusy.current = true;
     const preview = importPreview;
     setImportPreview(null);
     setDataLoading({
@@ -377,49 +459,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
         preview.dataset,
         "通话记录已打开",
         "记录已保存在这台电脑上。请选择要查看的联系人。",
-        preview.warnings
+        preview.warnings,
+        preview.collection
       );
       notify(`已打开 ${preview.eventCount} 条通话记录`);
     } catch {
       setImportErrors(["保存失败，请稍后重试。"]);
     } finally {
+      importBusy.current = false;
       setDataLoading(null);
     }
   }, [finishDataLoad, importPreview, notify]);
 
   const clearDataset = useCallback(async () => {
     try {
-      if (isPagesDemo) {
-        const nextDataset = await loadDataset();
-        if (!nextDataset) return;
-        setDataset(nextDataset);
-        setDataMode("imported");
-        setActiveContactId(nextDataset.contacts[0]?.id ?? null);
-        setSelectedEvent(null);
-        setCallsDateFilter(null);
+      await enqueueMutation(async () => {
+        const next = isPagesDemo ? await loadAccountCollection() : createAccountCollection();
+        if (!next) return;
+        if (!isPagesDemo) await deleteDataset();
+        publishCollection(next, isPagesDemo ? next.datasets[0]?.account.id ?? null : null);
         setDataLoadSuccess(null);
         setRoute("home");
-        await persistSettings({ ...DEFAULT_SETTINGS });
+        await persistSettings({ ...settings, lastContactId: null, lastAccountId: scopeRef.current, lastRoute: "home" });
         setSettingsOpen(false);
-        notify("已重置");
-        return;
-      }
-      await deleteDataset();
-      setDataset(createEmptyDataset());
-      setDataMode("empty");
-      setDataLoadSuccess(null);
-      setActiveContactId(null);
-      setRoute("home");
-      await persistSettings({ ...settings, lastContactId: null, lastRoute: "home" });
-      setSettingsOpen(false);
-      notify("已保存的通话记录已删除");
+        notify(isPagesDemo ? "已重置" : "已保存的通话记录已删除");
+      });
     } catch {
-      notify("删除失败，请稍后重试")
+      notify("删除失败，请稍后重试");
     }
-  }, [notify, persistSettings, settings]);
+  }, [enqueueMutation, notify, persistSettings, publishCollection, settings]);
 
   const value = useMemo<AppContextValue>(() => ({
     ready,
+    collection, accountScope, setAccountScope, accountsOpen, setAccountsOpen, removeAccount, linkContacts, unlinkContacts,
     dataset,
     dataMode,
     settings,
@@ -457,6 +529,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearDataset,
     notify
   }), [
+    collection, accountScope, setAccountScope, accountsOpen, removeAccount, linkContacts, unlinkContacts,
     activeContactId, appInfo, callsDateFilter, cancelWechatScan, chooseImport, closeMacSetup, completeMacSetup, confirmImport, confirmWechatScan, macSetupOpen,
     dataLoadSuccess, dataLoading, dataMode, dataset, importErrors, clearDataset, finishWithoutContact,
     importPreview, navigate, notify, openCallsForDate, ready, route, scanConsentOpen, scanWechat, selectContact,

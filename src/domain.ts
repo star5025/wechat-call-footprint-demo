@@ -37,6 +37,13 @@ export interface AppDataset {
   coverage: CoverageInterval[];
 }
 
+export interface AccountCollection {
+  format: "call-footprint-collection";
+  formatVersion: "1.0";
+  datasets: AppDataset[];
+  links: Array<{ members: Array<{ accountId: string; contactId: string }> }>;
+}
+
 export interface AppSettings {
   settingsVersion: 1;
   reducedMotion: boolean;
@@ -45,6 +52,7 @@ export interface AppSettings {
   defaultWallMetric: WallMetric;
   lastRoute: AppRoute;
   lastContactId: OpaqueId | null;
+  lastAccountId?: string | null;
 }
 
 export interface AppInfo {
@@ -103,6 +111,7 @@ export interface ImportPreview {
   endDate: string | null;
   warnings: string[];
   dataset: AppDataset;
+  collection?: AccountCollection;
 }
 
 export interface WallResult {
@@ -128,5 +137,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   timezone: "Asia/Shanghai",
   defaultWallMetric: "duration",
   lastRoute: "home",
-  lastContactId: null
+  lastContactId: null,
+  lastAccountId: null
 };

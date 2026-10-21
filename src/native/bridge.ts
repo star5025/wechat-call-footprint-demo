@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  AccountCollection,
   AppDataset,
   AppInfo,
   AppSettings,
@@ -10,6 +11,7 @@ import type {
   WechatScanResult
 } from "@/domain";
 
+import { createAccountCollection, validateAccountCollection, projectAccountCollection } from "@/data/accountCollection";
 import { browserStoragePrefix, isPagesDemo } from "@/runtime";
 import type { MacSetupProgress, MacSetupStatus } from "@/macSetup";
 
@@ -58,17 +60,47 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export async function loadDataset(): Promise<AppDataset | null> {
-  if (isTauriRuntime()) {
-    const content = await invoke<string | null>("load_dataset");
-    return content ? (JSON.parse(content) as AppDataset) : null;
+export async function loadAccountCollection(): Promise<AccountCollection | null> {
+  if (isPagesDemo) {
+    const { createDemoAccountCollection } = await import("@/demo/dataset");
+    return validateAccountCollection(createDemoAccountCollection());
   }
+  const raw = isTauriRuntime()
+    ? await invoke<string | null>("load_dataset")
+    : localStorage.getItem(DATASET_KEY);
+  if (!raw) return null;
+  const parsed: unknown = JSON.parse(raw);
+  if (parsed && typeof parsed === "object" && "format" in parsed && parsed.format === "call-footprint-export") {
+    return createAccountCollection(parsed as AppDataset);
+  }
+  return validateAccountCollection(parsed);
+}
+
+export async function saveAccountCollection(collection: AccountCollection): Promise<void> {
+  // Public demo records are session-only: never restore arbitrary historical JSON.
+  if (isPagesDemo) return;
+  const content = JSON.stringify(validateAccountCollection(collection));
+  if (isTauriRuntime()) {
+    await invoke("save_dataset", { content });
+    return;
+  }
+  localStorage.setItem(DATASET_KEY, content);
+}
+
+export async function loadDataset(): Promise<AppDataset | null> {
   if (isPagesDemo) {
     const { createDemoDataset } = await import("@/demo/dataset");
     return createDemoDataset();
   }
-  const raw = localStorage.getItem(DATASET_KEY);
-  return raw ? (JSON.parse(raw) as AppDataset) : null;
+  const raw = isTauriRuntime()
+    ? await invoke<string | null>("load_dataset")
+    : localStorage.getItem(DATASET_KEY);
+  if (!raw) return null;
+  const parsed: unknown = JSON.parse(raw);
+  if (parsed && typeof parsed === "object" && "format" in parsed && parsed.format === "call-footprint-collection") {
+    return projectAccountCollection(validateAccountCollection(parsed), null);
+  }
+  return parsed as AppDataset;
 }
 
 export async function saveDataset(dataset: AppDataset): Promise<void> {
@@ -97,6 +129,7 @@ export async function chooseImportFile(): Promise<ImportFileResult | null> {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".json,application/json";
+    input.oncancel = () => resolve(null);
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return resolve(null);
@@ -210,6 +243,23 @@ export async function exportJson(
   link.download = suggestedName;
   link.click();
   URL.revokeObjectURL(url);
+  return { path: suggestedName, sizeBytes: blob.size };
+}
+
+export async function exportAccountCollection(
+  suggestedName: string,
+  collection: AccountCollection
+): Promise<ExportResult | null> {
+  if (isPagesDemo) return null;
+  const content = JSON.stringify(validateAccountCollection(collection), null, 2);
+  if (isTauriRuntime()) return invoke<ExportResult | null>("export_json", { suggestedName, content });
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = suggestedName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   return { path: suggestedName, sizeBytes: blob.size };
 }
 

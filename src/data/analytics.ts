@@ -109,6 +109,7 @@ function coverageForDate(dataset: AppDataset, date: string): ContributionDay["co
   if (!intervals.length) return "missing";
   if (intervals.some((interval) => interval.state === "failed")) return "failed";
   if (intervals.some((interval) => interval.state === "partial")) return "partial";
+  if (intervals.some((interval) => interval.state === "missing")) return "missing";
   return "complete";
 }
 
@@ -143,17 +144,17 @@ export function buildWall(
     };
   });
 
-  const missingDays = days.filter((day) => day.coverage === "missing").length;
+  const incompleteDays = days.filter((day) => day.coverage !== "complete").length;
   const quality: DataQuality = {
-    overallState: missingDays ? "partial" : "good",
+    overallState: incompleteDays ? "partial" : "good",
     dimensions: [{
       id: "source_coverage",
-      state: missingDays ? "warning" : "good",
-      score: days.length ? (days.length - missingDays) / days.length : null,
-      summary: missingDays ? `${missingDays} 天没有找到记录。` : "所选日期的记录完整。",
+      state: incompleteDays ? "warning" : "good",
+      score: days.length ? (days.length - incompleteDays) / days.length : null,
+      summary: incompleteDays ? `${incompleteDays} 天的记录覆盖不完整。` : "所选日期的记录完整。",
       affectedEventCount: 0
     }],
-    issueCount: missingDays ? 1 : 0,
+    issueCount: incompleteDays ? 1 : 0,
     reviewEventCount: events.filter((event) => event.qualityFlags.length > 0).length,
     coverage: dataset.coverage
   };

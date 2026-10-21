@@ -207,7 +207,7 @@ export function MacSetupDialog({ onClose, onComplete }: MacSetupDialogProps) {
         {view === "consent" && <div className="scan-consent-list">
           <div><span>01</span><p><strong>仅本次读取</strong><small>使用已保存的密钥，在本机复制并读取所选账号的记录；本次读取不会初始化密钥，也不会启动或修改微信副本。</small></p></div>
           <div><span>02</span><p><strong>完成后清理</strong><small>临时读取内容会在完成或取消后清理。只保存联系人、头像、通话时间和时长等通话信息，不保存聊天内容。</small></p></div>
-          <div><span>03</span><p><strong>记录留在本机</strong><small>通话记录不会上传，但没有额外密码保护。成功读取会替换本应用中已保存的记录；失败或取消不会替换。</small></p></div>
+          <div><span>03</span><p><strong>记录留在本机</strong><small>通话记录不会上传，但没有额外密码保护。新账号会加入本应用，已有账号会更新并去重；失败或取消不会改变原有记录。</small></p></div>
         </div>}
         {message && !recoveryRequired && <p className="load-success-warning" role="status">{message}</p>}
         {busy && <div aria-live="polite">

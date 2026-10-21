@@ -40,7 +40,7 @@ export function ScanConsentDialog() {
           <div><span>03</span><p><strong>只保存通话信息</strong><small>只保存联系人名称、头像、通话时间和时长等信息，不保存聊天内容。</small></p></div>
         </div>
 
-        <div className="scan-consent-note"><span>ℹ️</span><p>整理后的通话记录只保存在这台电脑上，不会上传。这些记录没有额外的密码保护，请妥善保管电脑；你也可以随时在设置中删除。</p></div>
+        <div className="scan-consent-note"><span>ℹ️</span><p>整理后的通话记录只保存在这台电脑上，不会上传。新账号会加入，已有账号会更新并去重。记录没有额外的密码保护，请妥善保管电脑；也可以在设置中删除。</p></div>
         <div className="dialog-buttons scan-consent-actions">
           <button className="secondary-action" onClick={cancelWechatScan}>取消</button>
           <button className="primary-action" disabled={wechatScanning} onClick={() => void confirmWechatScan()}>同意读取</button>
