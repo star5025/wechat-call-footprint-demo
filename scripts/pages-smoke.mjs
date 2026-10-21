@@ -593,7 +593,7 @@ try {
   await page.waitForFunction(() => document.querySelectorAll(".account-manager-row").length === 1);
   await manager.getByRole("button", { name: "关闭账号管理", exact: true }).click();
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
-  await page.locator(".settings-sheet").getByRole("button", { name: "重置", exact: true }).click();
+  await page.locator(".settings-sheet").getByRole("button", { name: /重置/ }).click();
   await waitForHome(page);
   await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key))?.lastAccountId !== null, settingsKey);
 
