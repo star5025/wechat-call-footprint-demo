@@ -231,6 +231,9 @@ try {
   assert.ok(await page.locator(".soft-column .bar").first().evaluate((element) =>
     getComputedStyle(element).transitionProperty.split(", ").includes("height")));
   assert.match(await page.locator(".latest-main strong").textContent(), /老周/);
+  await page.locator(".latest-panel").getByRole("heading", { name: "距离上次接通", exact: true }).waitFor();
+  assert.match(await page.locator(".last-connected-gap").innerText(), /今天|昨天|\d+ 天/);
+  assert.match(await page.locator(".latest-panel").innerText(), /以已保存记录为准/);
   await page.waitForFunction(() => [...document.querySelectorAll("[data-contact-content]")]
     .every((element) => element.getAnimations().length === 0));
   await page.waitForFunction(() => [...document.querySelectorAll("[data-number-target]")]
@@ -468,6 +471,19 @@ try {
   await navigate(page, "小发现", "关于你们的小发现");
   await page.locator(".discovery-card").first().waitFor();
   assert.equal(await page.locator(".discovery-card").count(), 4);
+  const monthlyChart = page.locator(".monthly-chart-card");
+  await monthlyChart.getByRole("heading", { name: "每月通话", exact: true }).waitFor();
+  assert.equal(await monthlyChart.locator(".monthly-chart-column").count(), 12);
+  assert.equal(await page.locator(".donut").count(), 0, "Monthly chart replaces the redundant long-call ring");
+  await monthlyChart.getByRole("button", { name: "时长", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".monthly-chart-card")?.getAttribute("data-monthly-metric") === "duration");
+  await monthlyChart.getByRole("button", { name: "次数", exact: true }).click();
+  await monthlyChart.getByRole("button", { name: "上一年", exact: true }).click();
+  assert.match(await monthlyChart.locator(".monthly-chart-years").innerText(), /2025/);
+  await monthlyChart.getByRole("button", { name: "下一年", exact: true }).click();
+  assert.match(await monthlyChart.locator(".monthly-chart-years").innerText(), /2026/);
+  await monthlyChart.locator(".monthly-chart-column").first().focus();
+  assert.ok(await monthlyChart.locator(".monthly-chart-tip").first().isVisible());
   await navigate(page, "排行", "通话时长排行");
   await page.locator(".rank-card").first().waitFor();
   assert.equal(await page.locator(".rank-card").count(), 3);

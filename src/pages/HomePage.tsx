@@ -4,6 +4,7 @@ import { AccountScopeSelect } from "@/components/AccountScopeSelect";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Avatar, ContactAvatar } from "@/components/ContactAvatar";
 import { buildWall, filterEvents, isConnected, localDate, summarize } from "@/data/analytics";
+import { lastConnected } from "@/data/lastConnected";
 import { favoriteCallPeriod } from "@/data/contactSummary";
 import { useApp } from "@/state/AppContext";
 import { formatCompactDuration, formatDate, formatDuration, formatTime, mediaLabel, outcomeLabel, pad } from "@/utils/format";
@@ -24,10 +25,13 @@ const formatChartDuration = (seconds: number) => {
 export function HomePage() {
   const { dataset, activeContactId, navigate, openCallsForDate, openEvent, chooseImport, scanWechat, wechatScanning, appInfo, settings } = useApp();
   const [metric, setMetric] = useState<"duration" | "count">("duration");
-  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  const [now, setNow] = useState(() => new Date());
+  const currentHour = now.getHours();
   useEffect(() => {
-    const timer = window.setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
-    return () => window.clearInterval(timer);
+    const refresh = () => setNow(new Date());
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
   }, []);
   const events = useMemo(() => filterEvents(dataset, activeContactId), [dataset, activeContactId]);
   const summary = useMemo(() => summarize(events), [events]);
@@ -48,7 +52,8 @@ export function HomePage() {
   }, [events]);
   const max = Math.max(1, ...activeDays.map((day) => metric === "duration" ? day.durationSeconds : day.connectedCount));
   const favoritePeriod = useMemo(() => favoriteCallPeriod(events), [events]);
-  const latest = events[0] ?? null;
+  const lastCall = useMemo(() => lastConnected(events, now, dataset.timezone), [events, now, dataset.timezone]);
+  const latest = lastCall.event;
   const contact = dataset.contacts.find((item) => item.id === activeContactId) ?? dataset.contacts[0];
   const contactName = dataset.contacts.find((item) => item.id === latest?.contactId)?.displayName
     ?? latest?.contactSnapshot.displayName ?? "联系人";
@@ -99,7 +104,7 @@ export function HomePage() {
           </section>
 
           <section className="bottom-row" data-contact-content>
-            <article className="soft-panel latest-panel"><div className="section-heading compact"><div><span className="section-emoji coral">🕘</span><div><h2>最近一次</h2><p>{latest?.startedAt ? `${formatDate(latest.startedAt.slice(0,10))} · ${formatTime(latest.startedAt)}` : "暂无"}</p></div></div><button className="link-btn" onClick={() => navigate("calls")}>全部记录</button></div>{latest && <button className="latest-call" onClick={() => openEvent(latest)}><span className={`call-bubble ${latest.mediaType}`}>{latest.mediaType === "video" ? "📹" : "🎙️"}</span><span className="latest-main"><strong>和{contactName}的{mediaLabel(latest.mediaType)}</strong><small>{outcomeLabel(latest.outcome)}</small></span><span className="latest-time"><strong>{formatDuration(latest.connectedDurationSeconds)}</strong><small>查看详情</small></span></button>}</article>
+            <article className="soft-panel latest-panel"><div className="section-heading compact"><div><span className="section-emoji coral">🕘</span><div><h2>距离上次接通</h2><p>以已保存记录为准</p></div></div><button className="link-btn" onClick={() => navigate("calls")}>全部记录</button></div><div className="last-connected-gap">{lastCall.label}</div>{latest?.startedAt && <p className="last-connected-date">{latest.startedAt.slice(0, 4)} 年 {formatDate(latest.startedAt.slice(0, 10))} · {formatTime(latest.startedAt)}</p>}{latest && <button className="latest-call" onClick={() => openEvent(latest)}><span className={`call-bubble ${latest.mediaType}`}>{latest.mediaType === "video" ? "📹" : "🎙️"}</span><span className="latest-main"><strong>和{contactName}的{mediaLabel(latest.mediaType)}</strong><small>{outcomeLabel(latest.outcome)}</small></span><span className="latest-time"><strong>{formatDuration(latest.connectedDurationSeconds)}</strong><small>查看详情</small></span></button>}</article>
             <article className="soft-panel tiny-calendar-panel"><div className="section-heading compact"><div><span className="section-emoji yellow">📅</span><div><h2>有记录的日期</h2><p>{formatDate(recentStart)} — {formatDate(recentEnd)}</p></div></div><button className="link-btn" onClick={() => navigate("wall")}>查看日历</button></div><div className="tiny-calendar">{wall.days.slice(-9).map((day) => <div className={`tiny-day ${day.connectedCount ? "active" : ""}`} key={day.date}><span>{Number(day.date.slice(8))}</span><small>{day.connectedCount ? `${day.connectedCount}次` : "·"}</small></div>)}</div></article>
           </section>
         </>
