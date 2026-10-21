@@ -13,16 +13,9 @@ function localTimestamp(milliseconds: number): string {
 }
 
 function avatar(index: number): string {
-  const palettes = [
-    ["#eee7ff", "#8065c7"],
-    ["#dff5ed", "#378d77"],
-    ["#ffe8d8", "#c17b45"],
-    ["#e1edff", "#537ec3"],
-    ["#ffe3ef", "#bc6791"],
-    ["#e8e4ff", "#7163ae"]
-  ];
-  const [background, foreground] = palettes[index];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="32" fill="${background}"/><circle cx="${42 + index * 7}" cy="42" r="23" fill="${foreground}"/><path d="M16 112 Q64 ${42 + index * 4} 112 112Z" fill="${foreground}"/><circle cx="96" cy="25" r="7" fill="#ffffff"/></svg>`;
+  const backgrounds = ["#eee7ff", "#dff5ed", "#ffe8d8", "#e1edff", "#ffe3ef", "#e8e4ff"];
+  const emojis = ["🐶", "🐼", "🐱", "🦊", "🐰", "😎"];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="32" fill="${backgrounds[index]}"/><text x="64" y="88" text-anchor="middle" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif" font-size="80">${emojis[index]}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 

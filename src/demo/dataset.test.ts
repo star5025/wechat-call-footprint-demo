@@ -218,6 +218,9 @@ describe("synthetic Pages demonstration dataset", () => {
       const svg = decodeURIComponent(person.avatarRef!.split(",")[1]);
       expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
       expect(svg).toContain('viewBox="0 0 128 128"');
+      expect(svg).toMatch(/<text\b[^>]*>[🐶🐼🐱🦊🐰😎]+<\/text>/u);
+      expect(svg).toContain('font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif"');
+      expect(svg).not.toMatch(/<(?:circle|path|polygon|ellipse)\b/);
       expect(svg).toMatch(/<\/svg>$/);
       expect(svg).not.toMatch(/(?:href|src)\s*=|url\s*\(|@import|<(?:script|image|foreignObject)\b/i);
       // The XML namespace is an identifier, not a remote resource request.
