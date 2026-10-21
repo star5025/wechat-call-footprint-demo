@@ -82,6 +82,12 @@ async function assertNoRealDataControls(page) {
 }
 
 async function assertNoOverflow(page, label) {
+  // Chromium may report the new viewport before recalculating responsive media styles.
+  await page.waitForFunction(() => {
+    const nav = document.querySelector(".pill-nav");
+    const rect = nav.getBoundingClientRect();
+    return rect.left >= -1 && rect.right <= innerWidth + 1;
+  }, null, { timeout: 5000 });
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
