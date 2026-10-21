@@ -12,7 +12,6 @@ export const downloadReleases = [
     version: windowsTag,
     preview: false,
     releaseNotesUrl: `${releasesUrl}/tag/${windowsTag}`,
-    checksumUrl: `${releasesUrl}/download/${windowsTag}/SHA256SUMS.txt`,
     notices: ["此版本不含后续主题和动效更新。"],
     installers: [
       {
@@ -35,7 +34,6 @@ export const downloadReleases = [
     preview: true,
     sourceCommit: "91d2d93",
     releaseNotesUrl: `${releasesUrl}/tag/${macosTag}`,
-    checksumUrl: `${releasesUrl}/download/${macosTag}/SHA256SUMS.txt`,
     notices: [
       "测试版未经签名或 Apple 公证，尚未在真实 Mac 上验证；系统可能阻止打开。",
       "微信读取仅面向 WeChat 4.1.13。仅 Apple Silicon（arm64）支持初始化，且需要 Apple 开发工具，并非一键读取。",

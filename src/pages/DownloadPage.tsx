@@ -41,7 +41,6 @@ export function DownloadPage() {
             </div>
             <footer className="download-card-footer">
               <a href={release.releaseNotesUrl}>发行说明</a>
-              <a href={release.checksumUrl}>SHA-256 校验文件</a>
             </footer>
           </article>
         ))}

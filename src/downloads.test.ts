@@ -39,12 +39,12 @@ describe("download release metadata", () => {
     }
   });
 
-  it("links release-specific notes and checksums, without inventing Linux installers", () => {
+  it("links release-specific notes without checksum entries or invented Linux installers", () => {
     expect(downloadReleases.map((release) => release.os)).toEqual(["windows", "macos"]);
     for (const [index, tag] of ["v0.5.1", "v0.5.1-macos-preview.1"].entries()) {
       const release = downloadReleases[index];
       expect(release.releaseNotesUrl).toBe(`${releasesUrl}/tag/${tag}`);
-      expect(release.checksumUrl).toBe(`${releasesUrl}/download/${tag}/SHA256SUMS.txt`);
+      expect(release).not.toHaveProperty("checksumUrl");
       for (const installer of release.installers) {
         const url = new URL(installer.url);
         expect(url.protocol).toBe("https:");

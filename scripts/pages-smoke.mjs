@@ -588,6 +588,8 @@ try {
   assert.equal(await page.locator('.pill-nav [aria-current="page"]').count(), 0);
   assert.equal(await page.locator(".summary-image-fab:visible").count(), 0);
   assert.equal(await page.locator(".download-card").count(), 2);
+  assert.equal(await page.locator('.download-page a[href*="SHA256SUMS"]').count(), 0);
+  assert.doesNotMatch(await page.locator(".download-page").innerText(), /校验文件|SHA-256/);
   const releaseRoot = "https://github.com/star5025/wechat-call-footprint-demo/releases/download/";
   const expectedFiles = [
     "v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe",
