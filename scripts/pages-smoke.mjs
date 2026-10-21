@@ -578,7 +578,7 @@ try {
   assert.equal(aggregateNames.filter((name) => name === "阿杰" || name === "杰哥").length, 1, "Stable identity must link differing remarks without prompting");
   await page.locator(".contact-switch").click();
   await page.getByRole("button", { name: "打开设置", exact: true }).click();
-  await page.locator(".settings-sheet").getByRole("button", { name: "账号管理", exact: true }).click();
+  await page.locator(".settings-sheet").getByRole("button", { name: /账号管理/ }).click();
   const manager = page.getByRole("dialog", { name: "账号管理", exact: true });
   await manager.waitFor();
   assert.equal(await manager.locator(".account-manager-row").count(), 2);
