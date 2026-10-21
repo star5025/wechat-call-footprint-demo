@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className={`app ${isPagesDemo ? "pages-demo" : ""} ${settings.reducedMotion ? "reduced-motion" : ""}`}>
         <header className="topbar">
           <button className="brand" onClick={() => navigateFromHeader("home")} aria-label="回到首页">
-            <span className="brand-logo" aria-hidden="true">📞</span><strong>通话足迹</strong>
+            <strong>通话足迹</strong>
           </button>
           <Navigation downloadOpen={downloadOpen} onNavigate={navigateFromHeader} />
           <div className="top-actions">
@@ -97,10 +97,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
             >
               <span className="theme-toggle-track" aria-hidden="true">
-                <i className="theme-toggle-thumb">{theme === "dark" ? "🌙" : "☀️"}</i>
+                <i className="theme-toggle-thumb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{theme === "dark" ? <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z" /> : <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></>}</svg></i>
               </span>
             </button>
-            <button className="round-btn" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
+            <button className="round-btn" aria-label="打开设置" onClick={() => setSettingsOpen(true)}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 2 3 3-1 3 2 3-1 1-3 3-1 2-3-2-2 1-3-2-3-3 1-3-2Z" /><circle cx="12" cy="12" r="3" /></svg></button>
           </div>
         </header>
         <main ref={mainRef}>
