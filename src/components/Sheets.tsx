@@ -16,9 +16,10 @@ import {
   outcomeLabel
 } from "@/utils/format";
 
-export function Sheets({ appearance, onAppearanceChange }: {
+export function Sheets({ appearance, onAppearanceChange, hideSummaryExport = false }: {
   appearance: Appearance;
   onAppearanceChange: (appearance: Appearance) => void;
+  hideSummaryExport?: boolean;
 }) {
   const {
     selectedEvent,
@@ -155,7 +156,7 @@ export function Sheets({ appearance, onAppearanceChange }: {
   return (
     <>
       {sheetOpen && <button className="sheet-backdrop react-backdrop" aria-label="关闭抽屉" onClick={() => { closeEvent(); setSettingsOpen(false); }} />}
-      {dataMode === "imported" && summaryContactId && !anyOpen && (
+      {!hideSummaryExport && dataMode === "imported" && summaryContactId && !anyOpen && (
         <button
           className={`summary-image-fab ${exportingSummary ? "exporting" : ""}`}
           disabled={wechatScanning || exportingSummary}

@@ -8,11 +8,38 @@ import { MacSetupDialog } from "@/components/MacSetupDialog";
 import { useApp } from "@/state/AppContext";
 import { applyAppearance, applyTheme, readStoredAppearance, readStoredTheme, saveAppearance, saveTheme, type Appearance, type ColorTheme } from "@/theme";
 import { isPagesDemo } from "@/runtime";
+import type { AppRoute } from "@/domain";
+import { DownloadPage } from "@/pages/DownloadPage";
+import { downloadHash } from "@/downloads";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { navigate, setSettingsOpen, settings, dataMode, toasts, activeContactId, macSetupOpen, closeMacSetup, completeMacSetup } = useApp();
   const [theme, setTheme] = useState<ColorTheme>(readStoredTheme);
   const [appearance, setAppearance] = useState<Appearance>(readStoredAppearance);
+  const [downloadOpen, setDownloadOpen] = useState(() => isPagesDemo && window.location.hash === downloadHash);
+
+  useEffect(() => {
+    if (!isPagesDemo) return;
+    const syncDownloadHash = () => {
+      const open = window.location.hash === downloadHash;
+      setDownloadOpen(open);
+      if (open) window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    window.addEventListener("hashchange", syncDownloadHash);
+    window.addEventListener("popstate", syncDownloadHash);
+    return () => {
+      window.removeEventListener("hashchange", syncDownloadHash);
+      window.removeEventListener("popstate", syncDownloadHash);
+    };
+  }, []);
+
+  const navigateFromHeader = (route: AppRoute) => {
+    if (isPagesDemo && downloadOpen) {
+      window.location.hash = "/";
+      setDownloadOpen(false);
+    }
+    navigate(route);
+  };
 
   useLayoutEffect(() => {
     applyAppearance(appearance);
@@ -48,16 +75,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="ambient ambient-two" />
       <div className={`app ${isPagesDemo ? "pages-demo" : ""} ${settings.reducedMotion ? "reduced-motion" : ""}`}>
         <header className="topbar">
-          <button className="brand" onClick={() => navigate("home")} aria-label="回到首页">
+          <button className="brand" onClick={() => navigateFromHeader("home")} aria-label="回到首页">
             <span className="brand-logo" aria-hidden="true">📞</span><strong>通话足迹</strong>
           </button>
-          <Navigation />
+          <Navigation downloadOpen={downloadOpen} onNavigate={navigateFromHeader} />
           <div className="top-actions">
             {isPagesDemo && (
               <a
                 className="pages-download"
-                href="https://github.com/star5025/wechat-call-footprint-demo/releases/download/v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe"
-                aria-label="下载 Windows x64 安装包"
+                href={downloadHash}
+                aria-label="打开下载页面"
+                aria-current={downloadOpen ? "page" : undefined}
               >下载</a>
             )}
             <span className={`demo-tag ${isPagesDemo ? "pages-demo-tag" : dataMode === "imported" ? "imported-tag" : ""}`}>{isPagesDemo ? "演示" : dataMode === "empty" ? "开始使用" : "已保存"}</span>
@@ -73,9 +101,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button className="round-btn" aria-label="打开设置" onClick={() => setSettingsOpen(true)}>⚙️</button>
           </div>
         </header>
-        <main ref={mainRef}>{children}</main>
+        <main ref={mainRef}>
+          {isPagesDemo ? <>
+            {downloadOpen && <DownloadPage />}
+            <div hidden={downloadOpen}>{children}</div>
+          </> : children}
+        </main>
       </div>
-      <Sheets appearance={appearance} onAppearanceChange={setAppearance} />
+      <Sheets appearance={appearance} onAppearanceChange={setAppearance} hideSummaryExport={downloadOpen} />
       {!isPagesDemo && <ImportDialog />}
       <DataLoadDialog />
       {!isPagesDemo && <ScanConsentDialog />}

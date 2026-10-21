@@ -113,11 +113,10 @@ async function assertNoOverflow(page, label) {
 }
 
 async function assertDownloadEntry(page, label) {
-  const link = page.getByRole("link", { name: "下载 Windows x64 安装包", exact: true });
-  assert.equal(await link.count(), 1, `${label}: exactly one Windows download link`);
+  const link = page.getByRole("link", { name: "打开下载页面", exact: true });
+  assert.equal(await link.count(), 1, `${label}: exactly one download page link`);
   assert.ok(await link.isVisible(), `${label}: download link must be visible`);
-  assert.equal(await link.getAttribute("href"),
-    "https://github.com/star5025/wechat-call-footprint-demo/releases/download/v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe");
+  assert.equal(await link.getAttribute("href"), "#/download");
   assert.equal(await link.textContent(), "下载");
   assert.equal(await link.getAttribute("title"), null, "Download link must not add a tooltip");
   assert.ok(await link.evaluate((element) => {
@@ -126,7 +125,7 @@ async function assertDownloadEntry(page, label) {
     return rect.width >= 44 && rect.height >= 44 && rect.left >= 0 && rect.right <= innerWidth
       && rect.top >= 0 && rect.bottom <= innerHeight && (hit === element || element.contains(hit));
   }), `${label}: download must be a reachable touch target`);
-  // Inspect the direct installer URL only; never click it or bypass the external-request guard.
+  // Header navigation is local; installer links are verified without downloading binaries.
 }
 
 async function assertTopbarLayout(page, label) {
@@ -581,6 +580,49 @@ try {
   await navigate(page, "通话日历", "通话日历");
   await assertNoOverflow(page, "mobile calendar");
   await navigate(page, "首页", /小陈$/);
+  await waitForHome(page);
+  // The header now opens a real hash-addressable download page, never an installer directly.
+  await page.getByRole("link", { name: "打开下载页面", exact: true }).click();
+  await page.getByRole("heading", { level: 1, name: "下载", exact: true }).waitFor();
+  assert.ok(page.url().endsWith("#/download"));
+  assert.equal(await page.locator('.pill-nav [aria-current="page"]').count(), 0);
+  assert.equal(await page.locator(".summary-image-fab:visible").count(), 0);
+  assert.equal(await page.locator(".download-card").count(), 2);
+  const releaseRoot = "https://github.com/star5025/wechat-call-footprint-demo/releases/download/";
+  const expectedFiles = [
+    "v0.5.1/Call-Footprint-v0.5.1-x64-setup.exe",
+    "v0.5.1/Call-Footprint-v0.5.1-portable.exe",
+    "v0.5.1-macos-preview.1/Call-Footprint-v0.5.1-macos-arm64.dmg",
+    "v0.5.1-macos-preview.1/Call-Footprint-v0.5.1-macos-x64.dmg"
+  ];
+  assert.deepEqual(await page.locator(".download-option").evaluateAll((links) => links.map((link) => link.href)),
+    expectedFiles.map((file) => releaseRoot + file));
+  assert.match(await page.locator('[data-os="macos"]').innerText(), /测试版/);
+  assert.match(await page.locator('[data-os="macos"]').innerText(), /开发工具/);
+  assert.match(await page.locator('[data-os="macos"]').innerText(), /4\.1\.13/);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await assertNoOverflow(page, `download page ${width}`);
+    for (const theme of ["dark", "light"]) {
+      if (await page.locator("html").getAttribute("data-theme") !== theme) {
+        await page.getByRole("button", { name: theme === "dark" ? "切换到黑夜模式" : "切换到日间模式", exact: true }).click();
+      }
+      await page.waitForFunction((value) => document.documentElement.dataset.theme === value, theme);
+      assert.ok(await page.locator(".download-card").first().isVisible());
+    }
+  }
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".launch-screen").waitFor({ state: "hidden" });
+  await page.getByRole("heading", { level: 1, name: "下载", exact: true }).waitFor();
+  await page.goBack();
+  await waitForHome(page);
+  await page.goForward();
+  await page.getByRole("heading", { level: 1, name: "下载", exact: true }).waitFor();
+  await navigate(page, "记录", "通话记录");
+  assert.ok(!page.url().endsWith("#/download"));
+  await page.getByRole("link", { name: "打开下载页面", exact: true }).click();
+  await page.getByRole("heading", { level: 1, name: "下载", exact: true }).waitFor();
+  await page.getByRole("button", { name: "回到首页", exact: true }).click();
   await waitForHome(page);
   assert.deepEqual(failures, [], "Static Pages demo must complete all interactions without runtime/network errors");
   console.log(`Cloud headless Pages smoke passed for ${metadata.commit}`);

@@ -387,3 +387,39 @@ small{font-weight:650}
 :root[data-theme="dark"] .search-reveal input:focus-visible,
 :root[data-theme="dark"] .contact-choice-search input:focus-visible{border-radius:6px;outline:2px solid #b9a7ff;outline-offset:2px}
 :root[data-theme="dark"] .theme-select-menu>button:focus-visible{background:#45385f;box-shadow:inset 0 0 0 2px #b9a7ff}
+
+/* Pages-only download surface; colors follow both appearance and day/night tokens. */
+.app.pages-demo .download-page { max-width: 1060px; margin: 12px auto 36px; }
+.app.pages-demo .download-intro { margin: 0 4px 28px; }
+.app.pages-demo .download-intro h1 { margin: 0; font-size: clamp(30px, 4vw, 42px); letter-spacing: -.04em; line-height: 1.2; }
+.app.pages-demo .download-intro h1:focus { outline: none; }
+.app.pages-demo .download-intro p { margin: 12px 0 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.app.pages-demo .download-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
+.app.pages-demo .download-card { min-width: 0; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow); }
+.app.pages-demo .download-card-header { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 24px; }
+.app.pages-demo .download-card-header h2 { margin: 0 0 8px; font-size: 25px; letter-spacing: -.03em; }
+.app.pages-demo .download-card-header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.app.pages-demo .download-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.app.pages-demo .download-version, .app.pages-demo .download-preview { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; line-height: 1.4; white-space: nowrap; }
+.app.pages-demo .download-version { color: var(--muted); }
+.app.pages-demo .download-preview { color: var(--ink); background: var(--yellow-soft); }
+.app.pages-demo .download-options { display: grid; gap: 12px; }
+.app.pages-demo .download-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 84px; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--lavender-soft); color: var(--purple); text-decoration: none; }
+.app.pages-demo .download-option strong { display: block; font-size: 15px; line-height: 1.5; }
+.app.pages-demo .download-option small { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.app.pages-demo .download-arrow { flex-shrink: 0; font-size: 22px; }
+.app.pages-demo .download-option:hover { border-color: var(--purple); }
+.app.pages-demo .download-page a:focus-visible { outline: 3px solid var(--purple); outline-offset: 4px; }
+.app.pages-demo .download-notice { margin-top: 20px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.app.pages-demo .download-notice p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.app.pages-demo .download-notice-preview { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--yellow-soft); color: var(--ink); }
+.app.pages-demo .download-notice-preview > strong { font-size: 13px; }
+.app.pages-demo .download-card-footer { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.app.pages-demo .download-card-footer a { display: inline-flex; align-items: center; min-height: 32px; color: var(--purple); font-size: 12px; text-underline-offset: 4px; }
+.app.pages-demo .pages-download[aria-current="page"] { border-color: var(--purple); }
+@media (max-width: 760px) {
+  .app.pages-demo .download-page { margin-top: 8px; margin-bottom: 64px; }
+  .app.pages-demo .download-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .app.pages-demo .download-card { padding: 23px 20px; }
+  .app.pages-demo .download-intro { margin-bottom: 24px; }
+}
