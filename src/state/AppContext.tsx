@@ -477,7 +477,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const next = isPagesDemo ? await loadAccountCollection() : createAccountCollection();
         if (!next) return;
         if (!isPagesDemo) await deleteDataset();
-        publishCollection(next, isPagesDemo ? next.datasets[0]?.account.id ?? null : null);
+        const projection = publishCollection(next, isPagesDemo ? next.datasets[0]?.account.id ?? null : null);
+        setActiveContactId(isPagesDemo ? projection.contacts[0]?.id ?? null : null);
         setDataLoadSuccess(null);
         setRoute("home");
         await persistSettings({ ...settings, lastContactId: null, lastAccountId: scopeRef.current, lastRoute: "home" });
