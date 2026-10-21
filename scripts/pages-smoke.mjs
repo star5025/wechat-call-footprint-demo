@@ -483,7 +483,15 @@ try {
   await monthlyChart.getByRole("button", { name: "下一年", exact: true }).click();
   assert.match(await monthlyChart.locator(".monthly-chart-years").innerText(), /2026/);
   await monthlyChart.locator(".monthly-chart-column").first().focus();
-  assert.ok(await monthlyChart.locator(".monthly-chart-tip").first().isVisible());
+  await monthlyChart.locator(".monthly-chart-tip").first().waitFor({ state: "visible" }).catch(async (error) => {
+    const diagnostic = await monthlyChart.evaluate((card) => {
+      const column = card.querySelector(".monthly-chart-column");
+      const tip = column.querySelector(".monthly-chart-tip");
+      const style = getComputedStyle(tip);
+      return { focused: document.activeElement?.outerHTML, column: column.outerHTML, tip: tip.getBoundingClientRect().toJSON(), visibility: style.visibility, display: style.display, opacity: style.opacity, css: [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules].map((rule) => rule.cssText)).filter((rule) => rule.includes("monthly-chart")) };
+    });
+    throw new Error(`${error.message}\nMonthly chart diagnostic: ${JSON.stringify(diagnostic)}`);
+  });
   await navigate(page, "排行", "通话时长排行");
   await page.locator(".rank-card").first().waitFor();
   assert.equal(await page.locator(".rank-card").count(), 3);
